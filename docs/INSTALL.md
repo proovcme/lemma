@@ -5,7 +5,7 @@
 ```sh
 git clone --branch v0.1.0 https://github.com/proovcme/lemma.git
 cd lemma
-./scripts/init.sh admin@company.ru
+./scripts/init.sh admin@example.org
 docker compose up --build -d --wait
 docker compose ps
 ```
