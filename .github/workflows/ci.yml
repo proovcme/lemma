@@ -16,6 +16,8 @@ jobs:
           php-version: '8.4'
           extensions: pdo_sqlite, mbstring, zip
       - run: python3 scripts/audit-public.py
+        env:
+          PUBLIC_DENY_TERMS: ${{ secrets.PUBLIC_DENY_TERMS }}
       - run: find app config scripts public tests -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/php-lint.txt
       - run: php tests/run.php
   selfhost:

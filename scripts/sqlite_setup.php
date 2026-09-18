@@ -1316,7 +1316,7 @@ $pdo->exec('
 
 $pdo->exec('
     INSERT INTO project_contacts (project_id, full_name, contact, organization, position)
-    SELECT 1, "Анна Смирнова", "anna.smirnova@example.local, +7 999 100-20-30", "Заказчик", "Представитель заказчика"
+    SELECT 1, "Анна Смирнова", "anna.smirnova@example.local", "Заказчик", "Представитель заказчика"
     WHERE NOT EXISTS (
         SELECT 1 FROM project_contacts
         WHERE project_id = 1 AND full_name = "Анна Смирнова" AND organization = "Заказчик"
