@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Exercise the installed application over HTTP in CI."""
-import http.cookiejar,os,re,sys,urllib.parse,urllib.request
+import http.cookiejar,os,re,sys,urllib.parse,urllib.request,io,zipfile
 base=sys.argv[1].rstrip('/')
 mode=sys.argv[2] if len(sys.argv)>2 else 'work'
 opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
@@ -26,6 +26,14 @@ for path in ['/my-day','/tasks','/projects','/reports','/time']:
 if mode=='work':
  for path in ['/team','/knowledge','/admin/users','/admin/database-export']:
   get(path)
+if mode=='work':
+ html=get('/admin/database-export')
+ csrf=re.search(r'name="_csrf" value="([^"]+)"',html).group(1)
+ with opener.open(base+'/admin/database-export/download',urllib.parse.urlencode({'_csrf':csrf}).encode(),timeout=60) as r:
+  assert r.headers.get_content_type()=='application/zip','Database export did not return ZIP'
+  with zipfile.ZipFile(io.BytesIO(r.read())) as z:
+   sql=z.read('database/locia.sql').decode()
+   assert 'CREATE TABLE' in sql and 'users' in sql
 for path in ['/.env','/storage/test','/app/bootstrap.php','/locia-update/health','/locia-notify/health']:
  try:
   opener.open(base+path,timeout=15);raise AssertionError('Private path exposed: '+path)

@@ -1,5 +1,5 @@
 FROM php:8.4-fpm-alpine
-RUN apk add --no-cache curl libzip libzip-dev oniguruma-dev sqlite-libs sqlite-dev libxml2-dev \
+RUN apk add --no-cache curl mariadb-client libzip libzip-dev oniguruma-dev sqlite-libs sqlite-dev libxml2-dev \
     && docker-php-ext-install pdo_mysql pdo_sqlite mbstring zip opcache simplexml \
     && apk del libzip-dev oniguruma-dev sqlite-dev libxml2-dev
 WORKDIR /app
