@@ -156,6 +156,8 @@ final class DatabaseExportService
     private function findMysqlDump(): string
     {
         $candidates = [
+            '/usr/bin/mariadb-dump',
+            '/usr/bin/mysqldump',
             BASE_PATH . '/deploy/standalone/mariadb/bin/mysqldump.exe',
             BASE_PATH . '/deploy/standalone/mariadb/bin/mariadb-dump.exe',
             BASE_PATH . '/deploy/standalone/mysql/bin/mysqldump.exe',
@@ -165,8 +167,10 @@ final class DatabaseExportService
             'C:/laragon/bin/mysql/mysql-8.0/bin/mysqldump.exe',
             'C:/laragon/bin/mysql/mysql-5.7/bin/mysqldump.exe',
         ];
-        foreach (glob('C:/laragon/bin/mysql/*/bin/{mysqldump,mariadb-dump}.exe', GLOB_BRACE) ?: [] as $path) {
-            $candidates[] = $path;
+        foreach (['mysqldump', 'mariadb-dump'] as $binary) {
+            foreach (glob('C:/laragon/bin/mysql/*/bin/' . $binary . '.exe') ?: [] as $path) {
+                $candidates[] = $path;
+            }
         }
         foreach ($candidates as $path) {
             if (is_file($path)) {
