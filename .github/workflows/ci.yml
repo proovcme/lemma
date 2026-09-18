@@ -62,7 +62,10 @@ jobs:
           python3 scripts/http-smoke.py http://localhost:8081 demo
       - name: Diagnostics
         if: failure()
-        run: docker compose logs --tail 100; docker compose -f compose.demo.yml logs --tail 100
+        run: |
+          docker compose logs --tail 100
+          docker compose exec -T lemma sh -c 'command -v mysqldump; command -v mariadb-dump; tail -n 3 storage/logs/app-error.log' || true
+          docker compose -f compose.demo.yml logs --tail 100
       - name: Stop disposable installations
         if: always()
         run: docker compose down -v; docker compose -f compose.demo.yml down -v
