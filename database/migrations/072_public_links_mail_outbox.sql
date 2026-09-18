@@ -1,0 +1,42 @@
+CREATE TABLE IF NOT EXISTS public_links (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    kind VARCHAR(20) NOT NULL,
+    token VARCHAR(140) NOT NULL,
+    project_id BIGINT UNSIGNED NULL,
+    task_id BIGINT UNSIGNED NULL,
+    model_link_id BIGINT UNSIGNED NULL,
+    model_path TEXT NULL,
+    label VARCHAR(255) NOT NULL,
+    created_by BIGINT UNSIGNED NULL,
+    access_count INT UNSIGNED NOT NULL DEFAULT 0,
+    last_accessed_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_public_links_token (token),
+    INDEX idx_public_links_project (project_id),
+    INDEX idx_public_links_task (task_id),
+    INDEX idx_public_links_model_link (model_link_id),
+    CONSTRAINT fk_public_links_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    CONSTRAINT fk_public_links_task FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    CONSTRAINT fk_public_links_model_link FOREIGN KEY (model_link_id) REFERENCES project_model_links(id) ON DELETE CASCADE,
+    CONSTRAINT fk_public_links_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS notification_outbox (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(60) NOT NULL,
+    entity_id BIGINT UNSIGNED NULL,
+    recipient_email VARCHAR(255) NOT NULL,
+    subject VARCHAR(500) NOT NULL,
+    body MEDIUMTEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    attempts INT UNSIGNED NOT NULL DEFAULT 0,
+    dedupe_key VARCHAR(180) NOT NULL,
+    last_error TEXT NULL,
+    sent_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_notification_outbox_dedupe (dedupe_key),
+    INDEX idx_notification_outbox_status (status, attempts, id),
+    INDEX idx_notification_outbox_type_entity (type, entity_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

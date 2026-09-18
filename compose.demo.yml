@@ -1,0 +1,20 @@
+name: lemma-demo
+services:
+  demo:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    entrypoint: [/bin/sh, /app/deploy/demo/run-demo.sh]
+    environment:
+      APP_ENV: demo
+      APP_URL: "${DEMO_URL:-http://localhost:8081}"
+      DEMO_MODE: "1"
+      DB_SQLITE_PATH: /data/demo.sqlite
+      DEMO_SESSION_PATH: /data/sessions
+      BIND_HOST: 0.0.0.0
+      PORT: "8080"
+      REVIT_INTEGRATION_ENABLED: "0"
+      MAIL_ENABLED: "0"
+    ports: ["127.0.0.1:${DEMO_PORT:-8081}:8080"]
+    tmpfs: [/data:uid=82,gid=82, /app/storage:uid=82,gid=82]
+    security_opt: ["no-new-privileges:true"]

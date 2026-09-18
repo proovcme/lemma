@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS project_payment_schedule (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    project_id BIGINT UNSIGNED NOT NULL,
+    payment_name VARCHAR(255) NOT NULL,
+    planned_date DATE NOT NULL,
+    planned_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'planned',
+    invoice_date DATE NULL,
+    actual_date DATE NULL,
+    actual_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+    comment TEXT NULL,
+    sort_order INT NOT NULL DEFAULT 100,
+    created_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_payment_schedule_project_date (project_id, planned_date, status),
+    KEY idx_payment_schedule_actual_date (actual_date, status),
+    CONSTRAINT fk_payment_schedule_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    CONSTRAINT fk_payment_schedule_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_payment_schedule_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

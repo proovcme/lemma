@@ -1,0 +1,17 @@
+{$LEMMA_SITE:http://} {
+    encode zstd gzip
+    header {
+        -Server
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        X-Frame-Options SAMEORIGIN
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+    @private path /.env* /.git/* /storage/* /app/* /config/* /scripts/* /database/* /deploy/* /tests/* /docker/* /manifest/* /api/revit/* /locia-update/* /locia-notify/*
+    respond @private 404
+    root * /srv/public
+    php_fastcgi lemma:9000 {
+        root /app/public
+    }
+    file_server
+}

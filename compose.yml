@@ -1,0 +1,84 @@
+name: lemma
+services:
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: lemma
+      MARIADB_USER: lemma
+      MARIADB_PASSWORD: "${DB_PASSWORD:?Run scripts/init.sh}"
+      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:?Run scripts/init.sh}"
+    command: [--character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci]
+    volumes: ["database:/var/lib/mysql"]
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+  lemma:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "0"
+      APP_URL: "${APP_URL:-http://localhost:8080}"
+      APP_TIMEZONE: "${APP_TIMEZONE:-Europe/Moscow}"
+      APP_DATA_KEY: "${APP_DATA_KEY:?Run scripts/init.sh}"
+      DEMO_MODE: "0"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: lemma
+      DB_USERNAME: lemma
+      DB_PASSWORD: "${DB_PASSWORD:?Run scripts/init.sh}"
+      LOCIA_ADMIN_LOGIN: "0001"
+      LOCIA_ADMIN_NAME: Администратор
+      LOCIA_ADMIN_EMAIL: "${ADMIN_EMAIL:?Run scripts/init.sh}"
+      LOCIA_ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Run scripts/init.sh}"
+      ATLAS_URL: "${ATLAS_URL:-}"
+      MSP_SYNC_ENABLED: "0"
+      REVIT_INTEGRATION_ENABLED: "0"
+      PUSH_ENABLED: "0"
+      MAIL_ENABLED: "${MAIL_ENABLED:-0}"
+      MAIL_HOST: "${MAIL_HOST:-}"
+      MAIL_PORT: "${MAIL_PORT:-465}"
+      MAIL_USERNAME: "${MAIL_USERNAME:-}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
+      MAIL_FROM_EMAIL: "${MAIL_FROM_EMAIL:-}"
+      MAIL_FROM_NAME: Лемма
+      MAIL_ENCRYPTION: "${MAIL_ENCRYPTION:-ssl}"
+    volumes: ["storage:/app/storage"]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: [CMD-SHELL, "test -f /tmp/locia-ready && nc -z 127.0.0.1 9000"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+  web:
+    image: caddy:2.10-alpine
+    depends_on:
+      lemma:
+        condition: service_healthy
+    environment:
+      LEMMA_SITE: "${LEMMA_SITE:-http://}"
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./public:/srv/public:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+volumes:
+  database:
+  storage:
+  caddy-data:
+  caddy-config:

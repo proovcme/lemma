@@ -1,0 +1,11 @@
+/.env
+/.env.*
+!/.env.example
+/.DS_Store
+/storage/*
+!/storage/.gitkeep
+/backups/
+/vendor/
+*.log
+*.sqlite*
+__pycache__/

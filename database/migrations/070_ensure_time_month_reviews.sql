@@ -1,0 +1,35 @@
+CREATE TABLE IF NOT EXISTS time_month_reviews (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    status ENUM('draft','submitted','gip_approved','returned','director_approved','locked') NOT NULL DEFAULT 'draft',
+    submitted_at TIMESTAMP NULL,
+    submitted_by BIGINT UNSIGNED NULL,
+    gip_approved_at TIMESTAMP NULL,
+    gip_approved_by BIGINT UNSIGNED NULL,
+    department_approved_at TIMESTAMP NULL,
+    department_approved_by BIGINT UNSIGNED NULL,
+    director_approved_at TIMESTAMP NULL,
+    director_approved_by BIGINT UNSIGNED NULL,
+    returned_at TIMESTAMP NULL,
+    returned_by BIGINT UNSIGNED NULL,
+    return_comment TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_time_month_reviews_user_period (user_id, period_start),
+    KEY idx_time_month_reviews_status (status, period_start),
+    KEY idx_time_month_reviews_period (period_start, period_end),
+    CONSTRAINT fk_time_month_reviews_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_time_month_reviews_submitted_by FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_time_month_reviews_gip_by FOREIGN KEY (gip_approved_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_time_month_reviews_department_by FOREIGN KEY (department_approved_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_time_month_reviews_director_by FOREIGN KEY (director_approved_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_time_month_reviews_returned_by FOREIGN KEY (returned_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE time_month_reviews
+    ADD COLUMN IF NOT EXISTS department_approved_at TIMESTAMP NULL AFTER gip_approved_by;
+
+ALTER TABLE time_month_reviews
+    ADD COLUMN IF NOT EXISTS department_approved_by BIGINT UNSIGNED NULL AFTER department_approved_at;

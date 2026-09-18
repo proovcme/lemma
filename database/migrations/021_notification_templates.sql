@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS notification_templates (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    type        VARCHAR(64)  NOT NULL UNIQUE,
+    label       VARCHAR(255) NOT NULL,
+    subject     TEXT         NOT NULL,
+    body        MEDIUMTEXT   NOT NULL,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

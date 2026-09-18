@@ -1,0 +1,68 @@
+name: Lemma checks
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, mbstring, zip
+      - run: python3 scripts/audit-public.py
+      - run: find app config scripts public tests -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/php-lint.txt
+      - run: php tests/run.php
+  selfhost:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize and start MariaDB installation
+        run: |
+          ./scripts/init.sh ci@example.local
+          docker compose config --quiet
+          docker compose up --build -d --wait --wait-timeout 240
+          for i in $(seq 1 30); do curl -fsS http://localhost:8080/login >/dev/null && break; sleep 2; done
+      - name: Login, empty database and isolation
+        run: |
+          export ADMIN_PASSWORD="$(sed -n 's/^ADMIN_PASSWORD=//p' .env)"
+          python3 scripts/http-smoke.py http://localhost:8080 work
+          test "$(docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -Nse "SELECT COUNT(*) FROM users"')" = 1
+          test "$(docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -Nse "SELECT COUNT(*) FROM projects"')" = 0
+      - name: Backup and restore actual database and files
+        run: |
+          docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -e "CREATE TABLE restore_probe (value VARCHAR(40)); INSERT INTO restore_probe VALUES (\"before-backup\");"'
+          docker compose exec -T lemma sh -c 'echo before-backup > storage/restore-probe.txt'
+          ./scripts/backup.sh
+          docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -e "UPDATE restore_probe SET value=\"after-backup\"; CREATE TABLE stale_probe (id INT);"'
+          docker compose exec -T lemma sh -c 'echo after-backup > storage/restore-probe.txt; echo stale > storage/stale-probe.txt'
+          ./scripts/restore.sh "$(find backups -mindepth 1 -maxdepth 1 -type d)" --yes
+          test "$(docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -Nse "SELECT value FROM restore_probe"')" = before-backup
+          test "$(docker compose exec -T lemma cat storage/restore-probe.txt)" = before-backup
+          docker compose exec -T lemma test ! -f storage/stale-probe.txt
+          test "$(docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=\"lemma\" AND table_name=\"stale_probe\""')" = 0
+          export ADMIN_PASSWORD="$(sed -n 's/^ADMIN_PASSWORD=//p' .env)"
+          python3 scripts/http-smoke.py http://localhost:8080 work
+      - name: Restart preserves users and reuses migrations
+        run: |
+          docker compose restart lemma
+          docker compose up -d --wait --wait-timeout 120
+          test "$(docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -Nse "SELECT COUNT(*) FROM users"')" = 1
+      - name: Start synthetic demo
+        run: |
+          docker compose -f compose.demo.yml up --build -d
+          for i in $(seq 1 60); do curl -fsS http://localhost:8081/login >/dev/null && break; sleep 2; done
+          docker compose -f compose.demo.yml exec -T demo php scripts/demo_privacy_audit.php
+          python3 scripts/http-smoke.py http://localhost:8081 demo
+      - name: Diagnostics
+        if: failure()
+        run: docker compose logs --tail 100; docker compose -f compose.demo.yml logs --tail 100
+      - name: Stop disposable installations
+        if: always()
+        run: docker compose down -v; docker compose -f compose.demo.yml down -v

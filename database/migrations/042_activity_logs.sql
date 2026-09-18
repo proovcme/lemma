@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    scope VARCHAR(20) NOT NULL DEFAULT 'locia',
+    project_id BIGINT UNSIGNED NULL,
+    task_id BIGINT UNSIGNED NULL,
+    user_id BIGINT UNSIGNED NULL,
+    action VARCHAR(80) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    body TEXT NULL,
+    meta_json TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_activity_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+    CONSTRAINT fk_activity_task FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL,
+    CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_activity_scope_created (scope, created_at),
+    INDEX idx_activity_project_created (project_id, created_at),
+    INDEX idx_activity_task_created (task_id, created_at),
+    INDEX idx_activity_action_created (action, created_at),
+    INDEX idx_activity_user_created (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
