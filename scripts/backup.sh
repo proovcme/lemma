@@ -17,7 +17,7 @@ docker compose exec -T db sh -c 'exec mariadb-dump -uroot -p"$MARIADB_ROOT_PASSW
 docker compose run --rm -T --no-deps --entrypoint tar lemma -C /app/storage -czf - . > "$target/storage.tar.gz"
 # Encryption keys are needed to restore saved SMTP settings. Keep backups private.
 cp .env "$target/environment.env"
-git rev-parse HEAD > "$target/commit.txt"
+git rev-parse HEAD > "$target/commit.txt" 2>/dev/null || printf 'Source archive; see release.json\n' > "$target/commit.txt"
 cp manifest/release.json "$target/release.json"
 (cd "$target" && if command -v sha256sum >/dev/null 2>&1; then sha256sum database.sql storage.tar.gz environment.env commit.txt release.json > SHA256SUMS; else shasum -a 256 database.sql storage.tar.gz environment.env commit.txt release.json > SHA256SUMS; fi)
 echo "Backup created: $target"
