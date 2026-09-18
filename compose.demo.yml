@@ -9,6 +9,7 @@ services:
       APP_ENV: demo
       APP_URL: "${DEMO_URL:-http://localhost:8081}"
       DEMO_MODE: "1"
+      DB_CONNECTION: sqlite
       DB_SQLITE_PATH: /data/demo.sqlite
       DEMO_SESSION_PATH: /data/sessions
       BIND_HOST: 0.0.0.0
@@ -16,5 +17,7 @@ services:
       REVIT_INTEGRATION_ENABLED: "0"
       MAIL_ENABLED: "0"
     ports: ["127.0.0.1:${DEMO_PORT:-8081}:8080"]
-    tmpfs: [/data:uid=82,gid=82, /app/storage:uid=82,gid=82]
+    tmpfs:
+      - /data:uid=82,gid=82
+      - /app/storage:uid=82,gid=82
     security_opt: ["no-new-privileges:true"]

@@ -21,7 +21,8 @@ with opener.open(base+route,urllib.parse.urlencode(data).encode(),timeout=30) as
  html=r.read().decode();assert '/login' not in r.url,r.url
  assert 'ЛЕММА' in html or 'Лемма' in html
 for path in ['/my-day','/tasks','/projects','/reports','/time']:
- get(path)
+ html=get(path)
+ if mode=='demo' and path=='/projects':assert 'D-101' in html and 'D-104' in html
 if mode=='work':
  for path in ['/team','/knowledge','/admin/users','/admin/database-export']:
   get(path)
