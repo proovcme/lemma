@@ -1,0 +1,25 @@
+'use strict';
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const workspace=JSON.parse($('#workspace-data').textContent),role=workspace.canEdit?'director':'engineer',people={director:{name:workspace.user.name},engineer:{name:workspace.user.name}};
+let toastTimer;
+const href=path=>workspace.base+path;
+function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),5000)}
+function openDialog(title,body){$('#dialog-title').textContent=title;$('#dialog-body').innerHTML=body;$('#modal').showModal();$('#dialog-body input:not([type=checkbox]),#dialog-body textarea')?.focus()}
+function closeDialog(){$('#modal').close()}
+function navigate(hash){closeDialog();if(location.hash===hash)render();else location.hash=hash}
+const taskLabel=s=>({new:'Новая',in_progress:'В работе',overdue:'Просрочена',review:'На проверке',correction:'Доработка',done:'Принято',blocked:'Приостановлена'}[s]||s);
+function workRows(list){return list.map(t=>`<div class="work-row"><span class="row-mark">${t.id}</span><div><a class="row-title" href="${esc(href('/tasks/'+t.id))}">${esc(t.title)}</a><div class="row-meta"><span>${esc(t.section||'Без раздела')}</span><span class="status ${t.status==='done'?'done':t.status==='review'?'review':''}">${esc(taskLabel(t.status))}</span><span>${esc(t.date_end||'Срок не задан')}</span></div></div><a class="btn" href="${esc(href('/tasks/'+t.id))}">Открыть</a></div>`).join('')||'<div class="empty"><strong>Задач в этом разделе нет</strong></div>'}
+function documentRows(){return workspace.documents.map(d=>`<div class="file-row"><div class="file-data"><div><strong>${esc(d.missing_data||'Запись реестра')}</strong><small>${esc(d.section_code||'Без раздела')} · ${esc({received:'Получено',waiting:'Ожидается',not_needed:'Не требуется'}[d.status]||d.status)}</small></div></div><a class="btn" href="${esc(href('/projects/'+workspace.project.id+'/data'))}">К реестру</a></div>`).join('')||'<div class="empty"><strong>Реестр исходных данных пока пуст</strong><p>Вкладка показывает записи Леммы. Сетевая папка к публичному демо не подключена.</p></div>'}
+function project(tab='summary'){
+ const p=workspace.project,tasks=workspace.tasks,done=tasks.filter(t=>t.status==='done').length;
+ const active=tasks.filter(t=>t.status!=='done'),review=tasks.filter(t=>t.status==='review');
+ const tabs=[['summary','Сводка'],['work','Работа'],['materials','Материалы']];
+ let body='';
+ if(tab==='summary')body=`<div class="project-strip"><div><strong>${review.length?'Ожидают проверки: '+review.length:'Активных задач: '+active.length}</strong><p>Состояние по доступным вам задачам проекта.</p></div><a class="btn" href="#project/work">К работе</a></div><div class="compact-facts"><div>Работы<strong>${done} из ${tasks.length} принято</strong></div><div>Стадия<strong>${esc(p.stage||'Не указана')}</strong></div><div>Срок проекта<strong>${esc(p.finish_date||'Не задан')}</strong></div></div><div class="section-heading"><h2>В работе и на проверке</h2><a href="#project/work">Все задачи →</a></div><div class="list">${workRows([...review,...active.filter(t=>t.status!=='review')].slice(0,4))}</div><div class="section-heading"><h2>Актуальные материалы</h2><a href="#project/materials">Реестр проекта →</a></div><div class="list">${documentRows()}</div>`;
+ if(tab==='work')body=`<div class="section-heading"><h2>Задачи проекта</h2><span class="subtle">Доступно вам: ${tasks.length}</span></div><div class="list">${workRows(tasks)}</div>`;
+ if(tab==='materials')body=`<div class="section-heading"><h2>Исходные данные</h2><a href="${esc(href('/projects/'+p.id+'/data'))}">Открыть реестр →</a></div><div class="list">${documentRows()}</div><p class="inline-note">Это реестр исходных данных Леммы. Автоматическая сверка файловой шары в публичное демо пока не подключена.</p>`;
+ return `<div class="page-heading"><div><h1>${esc(p.title)}</h1><p>${esc(p.code)} · ${esc(p.stage)}${p.status==='archived'?' · Архив':''}</p></div>${workspace.canEdit?`<a class="btn" href="${esc(href('/tasks/new?project_id='+p.id))}">Новая задача</a>`:''}</div><nav class="tabs" aria-label="Разделы проекта">${tabs.map(([k,v])=>`<a class="${tab===k?'active':''}" href="#project${k==='summary'?'':'/'+k}">${v}</a>`).join('')}<a href="${esc(href('/projects/'+p.id+'/structure'))}">Команда</a><a href="${esc(href('/projects/'+p.id+'/gantt'))}">План</a></nav>${body}`;
+}
+function render(){const tab=location.hash.split('/')[1]||'summary';$('#main').innerHTML=project(['summary','work','materials','indicators'].includes(tab)?tab:'summary');$('.sidebar').classList.remove('is-open')}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a?.dataset.action==='close')closeDialog();if(a?.dataset.action==='menu')$('.sidebar').classList.toggle('is-open')});
+window.addEventListener('hashchange',()=>{if(location.hash==='#main'){$('#main').focus();return}render();window.scrollTo(0,0)});

@@ -1,0 +1,12 @@
+PT Sans, unmodified font files from google/fonts.
+License: OFL.txt (included in this directory).
+Fetched 2026-10-06.
+https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/OFL.txt
+Git blob: 7b7cfbee39c52f036f5d8655431c6e4928c2df5c
+SHA256: 2758cf7a872827f39661cf8cc24188113c030447aefb5ca7145993650076ca8c
+https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PT_Sans-Web-Bold.ttf
+Git blob: 3d4e6fe2f9f5282806cda0553d3ab321605ae37c
+SHA256: 3128bd5ecf01816e59a23d54c57a7a6b14615b07db53ff277c77376010265b05
+https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PT_Sans-Web-Regular.ttf
+Git blob: 83a21b724c47127a95e725b5c6bdfa30fcc1a7be
+SHA256: 9cc831490532009bae2b3ce0d39c62adfc889060beb421593bfd9d2396d0f10a

@@ -160,6 +160,11 @@ final class ProjectController extends BaseController
             $this->notFound();
         }
 
+        if (app_is_demo_mode() && ($_GET['classic'] ?? '') !== '1' && ($_GET['edit'] ?? '') !== '1') {
+            (new DemoProjectWorkspaceController())->show($project, $user, $this->tasks($id, $user));
+            return;
+        }
+
         $isArchived = $this->isArchived($project);
         $canImportMsp = !$isArchived && $this->canImportMsp($user);
         $canArchive = $this->canArchiveProject($user);
