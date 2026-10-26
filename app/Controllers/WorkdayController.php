@@ -32,6 +32,7 @@ final class WorkdayController extends BaseController
             'title' => 'Мой день',
             'subtitle' => 'Что принять, что сделать, что проверить и где списать время',
             'model' => $model,
+            'inputInbox' => (new \App\Services\TaskInputRequestService($this->db()))->inbox($user),
             'categories' => TimeService::CATEGORIES,
             'phases' => TimeService::PHASES,
             'filters' => $_GET,

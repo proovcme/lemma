@@ -579,6 +579,7 @@ $hasPrimaryTaskFlow = !$isLaborEstimateTask && !$isReviewTask && !$isDelegationT
                         </div>
                     </dl>
                 </div>
+                <?php require BASE_PATH.'/app/Views/tasks/_input_flow.php'; ?>
                 <section class="smart-card" data-tour="task-smart">
                     <div class="smart-card__head">
                         <span>Постановка задачи</span>

@@ -286,6 +286,9 @@ final class TaskController extends BaseController
         );
         $taskFormProjects = $this->projectsFor($user);
 
+        $inputService = new \App\Services\TaskInputRequestService($this->db());
+        $inputTask = $inputService->visibleTask($id, $user);
+        $inputCanRequest = $inputTask && $inputService->canRequest($inputTask, $user);
         $this->render('tasks/show', [
             'title' => '#' . $id . ' ' . $task['title'],
             'headerActions' => $this->taskHeaderActions($task, PermissionService::canEditTask($user, $task), ($_GET['edit'] ?? '') === '1', $drawerMode),
@@ -295,6 +298,10 @@ final class TaskController extends BaseController
             'participants' => $participants,
             'issuances' => $this->issuances($id),
             'documentRevisions' => DocumentRevisionService::listForTask($this->db(), $id),
+            'inputRequests' => $inputService->forTask($id,$user),
+            'inputCanRequest' => $inputCanRequest,
+            'inputCandidates' => $inputCanRequest ? $inputService->candidates((int)$task['project_id'],(int)$user['id']) : [],
+            'inputNonce' => bin2hex(random_bytes(16)),
             'canManageIssuances' => $this->canManageIssuances($user, $task),
             'canSubmitApproval' => $this->canSubmitApproval($user, $task),
             'canLeadApprove' => $this->canLeadApprove($user, $task),

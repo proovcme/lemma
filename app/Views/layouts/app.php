@@ -62,7 +62,7 @@ $versionInfo = app_version_info();
     <link rel="apple-touch-icon" href="<?= url('/pwa/apple-touch-icon.png') ?>">
     <link rel="manifest" href="<?= url('/manifest.webmanifest') ?>">
     <link rel="stylesheet" href="<?= asset('app.css') ?>">
-<link rel="stylesheet" href="<?= asset('lemma/design.css') ?>"></head>
+<link rel="stylesheet" href="<?= asset('lemma/design.css') ?>"><link rel="stylesheet" href="<?= asset('lemma/inputs.css') ?>"></head>
 <body class="<?= e(implode(' ', $bodyClasses)) ?>" data-unread-notifications="<?= $notificationCount ?>" data-lemma-user="<?= (int) $user['id'] ?>">
 <a class="skip-link" href="#main-content">К содержимому</a>
 <div class="lemma-mobile-head"><strong>лемма</strong><button class="btn" type="button" data-lemma-menu aria-controls="lemma-sidebar" aria-expanded="false">Меню</button><button class="btn" type="button" data-lemma-launch>Поиск</button></div><div class="app-shell">

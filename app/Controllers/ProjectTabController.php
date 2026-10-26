@@ -1151,6 +1151,11 @@ final class ProjectTabController extends BaseController
                 LEFT JOIN users labor_user ON labor_user.id = r.labor_approved_by
             ';
         }
+        if (in_array($kind, ['data', 'exchange'], true)) {
+            $projectionKey = $kind === 'data' ? 'data_registry_id' : 'exchange_id';
+            $selectTask .= ', input_request.id AS input_request_id';
+            $joinTask .= " LEFT JOIN task_input_requests input_request ON input_request.{$projectionKey}=r.id";
+        }
         $stmt = $this->db()->prepare("
             SELECT r.*, {$selectAssignee}{$selectTask}
             FROM {$table} r

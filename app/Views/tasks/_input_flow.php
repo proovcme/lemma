@@ -1,0 +1,6 @@
+<?php $inputPending=array_filter($inputRequests,static fn($r)=>!in_array($r['state'],['accepted','cancelled'],true)); ?>
+<section class="task-input-flow" aria-labelledby="task-input-title">
+<div class="input-flow-heading"><h3 id="task-input-title">Что нужно на входе</h3><span class="muted"><?= $inputPending ? 'Не принято: '.count($inputPending) : ($inputRequests?'Все запросы разобраны':'Запросов пока нет') ?></span></div>
+<?php if($inputRequests): ?><ul class="input-request-list"><?php foreach($inputRequests as $r): ?><li><a href="<?= url('/input-requests/'.(int)$r['id']) ?>"><?= e($r['title']) ?></a><span class="input-state input-state--<?= e($r['state']) ?>"><?= e(['waiting'=>'Ждём ответ','responded'=>'Принять ответ','returned'=>'На уточнении','accepted'=>'Основание принято','cancelled'=>'Отменён'][$r['state']]??$r['state']) ?></span><small><?= e($r['responsible_name']) ?> · до <?= e(format_date($r['due_date'])) ?></small></li><?php endforeach; ?></ul><?php endif; ?>
+<?php if($inputCanRequest): ?><details class="input-request-start"><summary>Не хватает данных — запросить у смежника</summary><?php $inputTask=$task;require BASE_PATH.'/app/Views/inputs/_request_form.php'; ?></details><?php endif; ?>
+</section>

@@ -2036,3 +2036,55 @@ CREATE TABLE IF NOT EXISTS project_composition_templates (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_composition_template_owner ON project_composition_templates(owner_user_id);
+
+-- Explicit input request and immutable response history.
+CREATE TABLE IF NOT EXISTS task_input_requests (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ project_id INTEGER NOT NULL,
+ source_task_id INTEGER NOT NULL,
+ data_registry_id INTEGER NOT NULL UNIQUE,
+ exchange_id INTEGER NOT NULL UNIQUE,
+ requester_id INTEGER NOT NULL,
+ responsible_id INTEGER NOT NULL,
+ title VARCHAR(240) NOT NULL,
+ expected_result TEXT NOT NULL,
+ due_date DATE NOT NULL,
+ state VARCHAR(20) NOT NULL DEFAULT 'waiting',
+ version INT NOT NULL DEFAULT 1,
+ latest_response_id INTEGER NULL,
+ accepted_response_id INTEGER NULL,
+ request_key CHAR(64) NOT NULL UNIQUE,
+ dedupe_key CHAR(64) NULL UNIQUE,
+ payload_hash CHAR(64) NOT NULL,
+ cancel_reason TEXT NULL,
+ cancelled_at DATETIME NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (project_id) REFERENCES projects(id),
+ FOREIGN KEY (source_task_id) REFERENCES tasks(id),
+ FOREIGN KEY (data_registry_id) REFERENCES project_data_registry(id),
+ FOREIGN KEY (exchange_id) REFERENCES project_task_exchange(id),
+ FOREIGN KEY (requester_id) REFERENCES users(id),
+ FOREIGN KEY (responsible_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS task_input_responses (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ request_id INTEGER NOT NULL,
+ responded_by INTEGER NOT NULL,
+ response_text TEXT NOT NULL,
+ source_reference VARCHAR(2000) NOT NULL,
+ source_revision VARCHAR(160) NOT NULL,
+ decision VARCHAR(20) NOT NULL DEFAULT 'pending',
+ decision_comment TEXT NULL,
+ decided_by INTEGER NULL,
+ decided_at DATETIME NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (request_id) REFERENCES task_input_requests(id),
+ FOREIGN KEY (responded_by) REFERENCES users(id),
+ FOREIGN KEY (decided_by) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_input_request_task ON task_input_requests(source_task_id,id);
+CREATE INDEX IF NOT EXISTS idx_input_request_inbox ON task_input_requests(responsible_id,state,due_date);
+CREATE INDEX IF NOT EXISTS idx_input_request_review ON task_input_requests(requester_id,state,due_date);
+CREATE INDEX IF NOT EXISTS idx_input_response_request ON task_input_responses(request_id,id);

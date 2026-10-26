@@ -395,7 +395,9 @@ require BASE_PATH . '/app/Views/projects/_navigation.php';
                 <tr class="<?= $isLate ? 'row-danger' : '' ?>">
                     <?php foreach ($columns as $column): ?>
                         <td>
-                            <?php if ($kind === 'schedule' && $column['key'] === 'issue_status'): ?>
+                            <?php if (!empty($row['input_request_id']) && in_array($column['key'], ['missing_data', 'assignment'], true)): ?>
+                                <a href="<?= url('/input-requests/' . (int)$row['input_request_id']) ?>"><?= e($row[$column['key']] ?? '') ?></a><small>Запрос исходных данных</small>
+                            <?php elseif ($kind === 'schedule' && $column['key'] === 'issue_status'): ?>
                                 <span class="status status--<?= in_array($issueStatus, ['Выдано', 'Принята'], true) ? 'done' : ($isLate || in_array($issueStatus, ['Проблема', 'Замечания'], true) ? 'overdue' : 'in_progress') ?>"><?= e($issueStatus ?: 'Планируется') ?></span>
                             <?php elseif (in_array($column['key'], ['task_id', 'blocking_task_id'], true)): ?>
                                 <?php if (!empty($row[$column['key']])): ?>

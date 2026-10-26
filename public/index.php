@@ -124,6 +124,11 @@ $router->post('/time/approvals/{id}/return', [TimeController::class, 'returnMont
 $router->post('/time/approvals/{id}/reopen', [TimeController::class, 'reopenMonth']);
 $router->get('/tasks/new', [TaskController::class, 'createForm']);
 $router->post('/tasks/new', [TaskController::class, 'store']);
+$router->post('/tasks/{id}/input-requests', [\App\Controllers\TaskInputController::class, 'create']);
+$router->get('/input-requests/{id}', [\App\Controllers\TaskInputController::class, 'show']);
+$router->post('/input-requests/{id}/respond', [\App\Controllers\TaskInputController::class, 'respond']);
+$router->post('/input-requests/{id}/decide', [\App\Controllers\TaskInputController::class, 'decide']);
+$router->post('/input-requests/{id}/cancel', [\App\Controllers\TaskInputController::class, 'cancel']);
 $router->get('/tasks/{id}', [TaskController::class, 'show']);
 $router->post('/tasks/{id}', [TaskController::class, 'update']);
 $router->post('/tasks/{id}/status', [TaskController::class, 'status']);
