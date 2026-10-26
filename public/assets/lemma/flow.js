@@ -22,7 +22,9 @@
  search?.addEventListener('input',filterCommands);
  document.addEventListener('keydown',e=>{const editing=e.target.closest('input,textarea,select,[contenteditable=true]');if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();command.open?closeCommand():openCommand()}else if(e.key==='/'&&!editing&&!$('dialog[open]')){e.preventDefault();openCommand()}});
  $$('[data-lemma-menu]').forEach(button=>button.addEventListener('click',()=>{const sidebar=$('.lemma-sidebar');const open=sidebar.classList.toggle('is-open');button.setAttribute('aria-expanded',String(open));if(open)$('.lemma-nav a',sidebar)?.focus()}));
- window.addEventListener('hashchange',()=>{$$('[data-lemma-menu]').forEach(b=>b.setAttribute('aria-expanded','false'))});
+ function revealAnchor(){const id=location.hash.slice(1);if(!id.startsWith('dpr-'))return;const target=document.getElementById(id);if(target instanceof HTMLDetailsElement)target.open=true;}
+ revealAnchor();
+ window.addEventListener('hashchange',()=>{$$('[data-lemma-menu]').forEach(b=>b.setAttribute('aria-expanded','false'));revealAnchor()});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('.lemma-sidebar.is-open')){$('.lemma-sidebar').classList.remove('is-open');$$('[data-lemma-menu]').forEach(b=>b.setAttribute('aria-expanded','false'));$('[data-lemma-menu]')?.focus()}});
  // Recent destinations contain a title and route, never response data or form content.
  let recent=storage.read(key('recent'),[]);if(!Array.isArray(recent))recent=[];
