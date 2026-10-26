@@ -186,6 +186,14 @@ if ($currentDependency === '' && !empty($smart['depends_on']) && ctype_digit((st
     $currentDependency = (string) $smart['depends_on'];
 }
 $currentAssignee = $task['assignee_id'] ?? ($_GET['assignee_id'] ?? (in_array($currentTaskType, ['assignment', 'delegation'], true) ? '' : current_user()['id']));
+$sectionContext = !$isEdit ? ($sectionContext ?? null) : null;
+if ($sectionContext) {
+    $currentSection = (string) $sectionContext['code'];
+    $currentProjectSectionId = (string) $sectionContext['id'];
+    $currentAssignee = $_GET['assignee_id'] ?? ($sectionContext['suggested_assignee_id'] ?? '');
+    if (isset($sectionOptions)) $sectionOptions[$currentSection] = (string) $sectionContext['title'];
+}
+
 $tagValue = implode(', ', array_map(static fn (array $tag): string => (string) $tag['name'], $taskTags ?? []));
 $tagOptions = $tagOptions ?? [];
 $participants = $participants ?? ['assignee' => [], 'coauthor' => [], 'observer' => []];
@@ -259,8 +267,10 @@ foreach ($customFields ?? [] as $field) {
 }
 $requiredCustomCount = count($customFieldGroups['required']['fields']);
 ?>
+<?php if (!$isEdit): require BASE_PATH . '/app/Views/tasks/_section_context.php'; endif; ?>
 <form id="task-form" class="task-create-form" method="post" action="<?= url($action) ?>" enctype="multipart/form-data" data-tour-surface="task-form" data-tour="task-form" data-task-intent-current="<?= e($currentTaskIntent) ?>" data-edit-mode="<?= $isEdit ? '1' : '0' ?>">
     <?= csrf_field() ?>
+    <?php if ($sectionContext): ?><input type="hidden" name="workspace_section_id" value="<?= (int) $sectionContext['id'] ?>"><input type="hidden" name="section" value="<?= e($sectionContext['code']) ?>"><?php endif; ?>
     <?php if ($drawerMode): ?><input type="hidden" name="drawer" value="1"><?php endif; ?>
     <input type="hidden" name="task_type" value="<?= e($currentTaskType) ?>" data-task-type-field>
     <?php if ($hasAtlasContext): ?>
@@ -399,7 +409,7 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
             </div>
 
             <label>
-                <span>Код раздела</span>
+                <span>Учётная группа исполнителя</span>
                 <input value="<?= e($currentCostGroupCode) ?>" readonly data-task-cost-group-code placeholder="Заполнится по исполнителю">
                 <small class="field-hint" data-task-cost-group-hint>Берётся из стоимостной группы исполнителя.</small>
             </label>
@@ -451,10 +461,10 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
 
             <label data-tour="task-form-reviewer" data-intent-panel="work assign_out assign_request issuance labor_estimate bim_family_request" data-intent-edit-strict="1">
                 <span>Проверяющий результата</span>
-                <select name="reviewer_id">
-                    <option value="">Автоматически</option>
+                <select name="reviewer_id"<?= $sectionContext && count($sectionContext['suggested_reviewers']) > 1 ? ' required' : '' ?>>
+                    <option value=""><?= $sectionContext && count($sectionContext['suggested_reviewers']) > 1 ? 'Выберите проверяющего' : 'Автоматически' ?></option>
                     <?php foreach ($users as $item): ?>
-                        <option value="<?= (int) $item['id'] ?>"<?= selected($task['reviewer_id'] ?? '', $item['id']) ?>><?= e($item['name']) ?></option>
+                        <option value="<?= (int) $item['id'] ?>"<?= selected($task['reviewer_id'] ?? ($sectionContext['suggested_reviewer_id'] ?? ''), $item['id']) ?>><?= e($item['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <small class="muted">Для сдачи результата. Если не выбран, система назначит автоматически.</small>
@@ -476,7 +486,7 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
             <div class="task-form-composition__grid">
                 <label class="task-form-wide">
                     <span>Раздел <em class="field-required">Обязательно</em></span>
-                    <select name="section" required>
+                    <select name="section" required<?= $sectionContext ? ' disabled' : '' ?>>
                         <option value="">Выберите раздел</option>
                         <?php foreach ($sectionOptions as $sectionValue => $sectionLabel): ?>
                             <?php $sectionCaption = $sectionLabel !== $sectionValue ? $sectionValue . ' · ' . $sectionLabel : $sectionValue; ?>

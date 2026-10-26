@@ -161,6 +161,8 @@ $router->post('/projects/new', [ProjectController::class, 'store']);
 $router->get('/projects/{id}', [ProjectController::class, 'show']);
 $router->get('/projects/{id}/structure', [\App\Controllers\ProjectTeamWorkspaceController::class, 'show']);
 $router->post('/projects/{id}/team/sections', [\App\Controllers\ProjectTeamWorkspaceController::class, 'add']);
+$router->post('/projects/{id}/team/templates', [\App\Controllers\ProjectTeamWorkspaceController::class, 'saveTemplate']);
+$router->post('/projects/{id}/team/templates/apply', [\App\Controllers\ProjectTeamWorkspaceController::class, 'applyTemplate']);
 $router->post('/projects/{id}/team/sections/{sectionId}/state', [\App\Controllers\ProjectTeamWorkspaceController::class, 'state']);
 $router->post('/projects/{id}/structure/stages', [ProjectStructureController::class, 'addStage']);
 $router->post('/projects/{id}/structure/items', [ProjectStructureController::class, 'addItem']);

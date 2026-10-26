@@ -17,8 +17,7 @@ final class TaskActionQueueService
     {
         $userId = (int) ($user['id'] ?? 0);
         if ($userId <= 0) return [];
-        $canManage = RoleService::isAny($user['role'] ?? null, [RoleService::DEPUTY_DIRECTOR, RoleService::DIRECTOR, RoleService::ADMIN]) ? 1 : 0;
-        $isGip = RoleService::isAny($user['role'] ?? null, [RoleService::GIP, RoleService::DEPUTY_DIRECTOR, RoleService::DIRECTOR]) ? 1 : 0;
+        // Management visibility alone does not assign a personal action.
         $stmt = $this->pdo->prepare('SELECT DISTINCT t.id
             FROM tasks t INNER JOIN projects p ON p.id = t.project_id
             WHERE p.status = "active" AND t.status <> "done" AND t.closed_at IS NULL AND COALESCE(t.task_type, "") <> "review"
@@ -33,10 +32,10 @@ final class TaskActionQueueService
                           AND :today_lead BETWEEN lead_vacation.date_from AND lead_vacation.date_to
                     )
                 ))
-                OR (t.approval_stage = "review_gip" AND (p.gip_user_id = :project_gip OR ((p.gip_user_id IS NULL OR p.gip_user_id = 0) AND :is_gip = 1)))
+                OR (t.approval_stage = "review_gip" AND p.gip_user_id = :project_gip)
                 OR (t.task_type = "issuance" AND t.approval_stage = "review_gip" AND t.assignee_id = :issuance_assignee AND :self_issuance = 1)
                 OR (t.status IN ("review", "pending_close") AND t.close_requested_at IS NOT NULL
-                    AND (t.reviewer_id = :close_reviewer OR t.author_id = :close_author OR p.gip_user_id = :close_gip OR :can_manage = 1
+                    AND (t.reviewer_id = :close_reviewer OR t.author_id = :close_author OR p.gip_user_id = :close_gip
                         OR EXISTS (
                             SELECT 1 FROM employee_vacations close_vacation
                             WHERE close_vacation.user_id IN (t.reviewer_id, t.author_id)
@@ -49,9 +48,9 @@ final class TaskActionQueueService
             ORDER BY t.id');
         $stmt->execute([
             'lead_reviewer' => $userId, 'lead_substitute' => $userId, 'today_lead' => date('Y-m-d'),
-            'project_gip' => $userId, 'is_gip' => $isGip,
+            'project_gip' => $userId,
             'issuance_assignee' => $userId, 'self_issuance' => PermissionService::canSelfApproveIssuance($user) ? 1 : 0,
-            'close_reviewer' => $userId, 'close_author' => $userId, 'close_gip' => $userId, 'can_manage' => $canManage,
+            'close_reviewer' => $userId, 'close_author' => $userId, 'close_gip' => $userId,
             'close_substitute' => $userId, 'today_close' => date('Y-m-d'),
         ]);
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));

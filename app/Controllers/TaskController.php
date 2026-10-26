@@ -88,12 +88,27 @@ final class TaskController extends BaseController
         $includeAllProjectFields = $selectedProjectId === null;
         $projects = $this->projectsFor($user);
         $visibleProjectIds = array_map(static fn (array $project): int => (int) $project['id'], $projects);
+        $sectionContext = null;
+        $contextSections = [];
+        if ($selectedProjectId !== null && in_array($selectedProjectId, $visibleProjectIds, true)) {
+            $contextService = new \App\Services\ProjectTaskContextService($this->db());
+            $contextSections = $contextService->sections($selectedProjectId);
+            if (!empty($_GET['workspace_section_id'])) {
+                try { $sectionContext = $contextService->resolve($selectedProjectId, (int) $_GET['workspace_section_id']); }
+                catch (\InvalidArgumentException $error) {
+                    flash('error', $error->getMessage());
+                    redirect('/projects/' . $selectedProjectId . '/structure');
+                }
+            }
+        } elseif (!empty($_GET['workspace_section_id'])) { $this->forbidden(); }
+
         $relationTasks = $this->relationTasks($user, $selectedProjectId);
         $requestedParentId = ($_GET['parent_id'] ?? '') !== '' ? (int) $_GET['parent_id'] : null;
         $relationTasks = $this->ensureRelationTaskOption($relationTasks, $user, $requestedParentId, $selectedProjectId);
 
         $this->render('tasks/form', [
             'title' => 'Новая задача',
+            'sectionContext' => $sectionContext, 'contextSections' => $contextSections,
             'headerActions' => [
                 ['label' => 'К задачам', 'href' => '/tasks', 'class' => 'btn-outline'],
                 ['label' => 'Добавить задачу', 'type' => 'button', 'buttonType' => 'submit', 'form' => 'task-form', 'class' => 'btn-red'],
@@ -121,6 +136,15 @@ final class TaskController extends BaseController
         }
 
         $data = $this->taskPayload();
+        if (!empty($_POST['workspace_section_id'])) {
+            $this->ensureProjectIsActive((int) $data['project_id']);
+            $this->ensureTaskProjectScope($user, (int) $data['project_id'], $data['parent_id'] ? (int) $data['parent_id'] : null);
+            try { $data = (new \App\Services\ProjectTaskContextService($this->db()))->bind($data, (int) $_POST['workspace_section_id']); }
+            catch (\InvalidArgumentException $error) {
+                flash('error', $error->getMessage());
+                redirect('/projects/' . (int) $data['project_id'] . '/structure');
+            }
+        }
         $this->validateSmart($data, true);
         if (!PermissionService::canCreateTaskType($user, (string) $data['task_type'])) {
             $this->forbidden();
@@ -139,6 +163,14 @@ final class TaskController extends BaseController
             $data['assignee_id'] = (int) $user['id'];
         }
         $this->applyAssigneeCostGroup($data);
+        if (!empty($_POST['workspace_section_id'])) {
+            try { $data = (new \App\Services\ProjectTaskContextService($this->db()))->bind($data, (int) $_POST['workspace_section_id']); }
+            catch (\InvalidArgumentException $error) {
+                flash('error', $error->getMessage());
+                redirect('/projects/' . (int) $data['project_id'] . '/structure');
+            }
+        }
+
 
         // Проверяющий не может быть исполнителем (самосогласование запрещено):
         // если выбран сам исполнитель — подбираем проверяющего автоматически.
@@ -348,6 +380,12 @@ final class TaskController extends BaseController
             $data['assignee_id'] = (int) $user['id'];
         }
         $this->applyAssigneeCostGroup($data);
+        // Editing an existing linked task must not replace its business section with an accounting group.
+        if (!empty($task['project_section_id']) && (int) ($data['project_section_id'] ?? 0) === (int) $task['project_section_id'] && (int) $data['project_id'] === (int) $task['project_id']) {
+            $data['section'] = (string) $task['section'];
+            $data['discipline'] = $task['discipline'];
+        }
+
         // Проверяющий не может быть исполнителем (самосогласование запрещено).
         if ((int) $data['reviewer_id'] === (int) $data['assignee_id']) {
             $data['reviewer_id'] = null;
@@ -2343,7 +2381,7 @@ final class TaskController extends BaseController
             'task_type' => $taskType,
             'task_intent' => $taskIntent,
             'project_id' => $projectId,
-            // Historical project-structure links remain intact; new task input is a single business section.
+            // A new structure link is resolved after project-scope validation in the context flow.
             'project_section_id' => null,
             'parent_id' => $structuralParentId,
             'assignee_id' => ($_POST['assignee_id'] ?? '') !== '' ? (int) $_POST['assignee_id'] : null,

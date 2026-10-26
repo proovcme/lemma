@@ -27,7 +27,8 @@ final class WorkdayController extends BaseController
         ');
         $notificationStmt->execute([(int) $user['id']]);
 
-        $this->render('workday/index', [
+        view('workday/workspace', [
+            'user' => $user,
             'title' => 'Мой день',
             'subtitle' => 'Что принять, что сделать, что проверить и где списать время',
             'model' => $model,
@@ -39,7 +40,7 @@ final class WorkdayController extends BaseController
             'vacationCandidates' => $this->db()->query("SELECT id, name, department FROM users WHERE is_active = 1 AND role <> 'admin' ORDER BY department, name")->fetchAll(),
             'dayNotifications' => $notificationStmt->fetchAll(),
             'performanceReviewActions' => $performanceReviewActions,
-        ]);
+        ], 'layouts/workspace');
     }
 
     public function createVacation(): void

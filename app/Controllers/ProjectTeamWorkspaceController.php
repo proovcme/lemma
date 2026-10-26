@@ -11,12 +11,20 @@ final class ProjectTeamWorkspaceController extends BaseController
     {
         [$user, $project] = $this->access($id);
         $service = new ProjectSectionWorkspaceService($this->db());
+        $templates = new \App\Services\ProjectCompositionTemplateService($this->db());
+        $templatePreview = null;
+        if (!empty($_GET['template_id']) && $this->canEdit($user, $project)) {
+            try { $templatePreview = $templates->preview((int) $_GET['template_id'], (int) $user['id']); }
+            catch (\InvalidArgumentException $error) { flash('error', $error->getMessage()); }
+        }
         view('projects/team_workspace', [
             'title' => 'Разделы и команда', 'project' => $project, 'user' => $user,
             'structure' => (new ProjectStructureService($this->db()))->structure($id),
             'removed' => $service->removed($id), 'catalogOptions' => $service->catalogOptions(),
             'users' => $this->db()->query('SELECT id, name, department, is_active FROM users WHERE role <> "admin" ORDER BY name')->fetchAll(),
             'canEdit' => $this->canEdit($user, $project) && $project['status'] !== 'archived',
+            'templates' => $templates->forUser((int) $user['id']), 'templatePreview' => $templatePreview,
+            'canCreateTasks' => PermissionService::canCreateTasks($user) && $project['status'] !== 'archived',
             'canManageCatalog' => PermissionService::canManageUsers($user),
         ], 'layouts/workspace');
     }
@@ -44,6 +52,28 @@ final class ProjectTeamWorkspaceController extends BaseController
             (new ProjectSectionWorkspaceService($this->db()))->setActive($id, $sectionId, $active);
             ActivityLogService::recordProject($id, (int) $user['id'], $active ? 'project.section_restored' : 'project.section_removed', $active ? 'Раздел возвращён в проект' : 'Раздел убран из состава проекта', 'Раздел #' . $sectionId);
             flash('success', $active ? 'Раздел возвращён вместе с назначениями.' : 'Раздел убран из состава. Задачи, назначения и история сохранены; раздел можно вернуть ниже.');
+        } catch (\InvalidArgumentException $error) { flash('error', $error->getMessage()); }
+        redirect('/projects/' . $id . '/structure');
+    }
+
+    public function saveTemplate(int $id): void
+    {
+        [$user, $project] = $this->access($id, true);
+        try {
+            $templateId = (new \App\Services\ProjectCompositionTemplateService($this->db()))->save($id, (int) $user['id'], (string) ($_POST['name'] ?? ''));
+            ActivityLogService::recordProject($id, (int) $user['id'], 'project.composition_template_saved', 'Сохранён личный шаблон состава', 'Шаблон #' . $templateId);
+            flash('success', 'Шаблон состава сохранён. Он доступен вам в других проектах; задачи и назначения в него не входят.');
+        } catch (\InvalidArgumentException $error) { flash('error', $error->getMessage()); }
+        redirect('/projects/' . $id . '/structure');
+    }
+
+    public function applyTemplate(int $id): void
+    {
+        [$user, $project] = $this->access($id, true);
+        try {
+            $result = (new \App\Services\ProjectCompositionTemplateService($this->db()))->apply($id, (int) ($_POST['template_id'] ?? 0), (int) $user['id'], (array) ($_POST['items'] ?? []));
+            ActivityLogService::recordProject($id, (int) $user['id'], 'project.composition_template_applied', 'Применён шаблон состава', 'Добавлено: ' . $result['added'] . '; пропущено: ' . $result['skipped']);
+            flash('success', 'Добавлено: ' . $result['added'] . '. Уже есть в проекте или ранее убраны: ' . $result['skipped'] . '. Существующая команда сохранена; убранные разделы можно вернуть вручную.');
         } catch (\InvalidArgumentException $error) { flash('error', $error->getMessage()); }
         redirect('/projects/' . $id . '/structure');
     }

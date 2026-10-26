@@ -2027,3 +2027,12 @@ INSERT OR IGNORE INTO knowledge_document_revisions (document_id, version_no, fol
 SELECT id, 1, folder_id, title, summary, body_html, is_pinned
 FROM knowledge_documents
 WHERE id IN (1, 2) AND current_version = 1;
+
+CREATE TABLE IF NOT EXISTS project_composition_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    items_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_composition_template_owner ON project_composition_templates(owner_user_id);
