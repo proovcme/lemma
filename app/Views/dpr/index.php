@@ -266,7 +266,7 @@ $metricCards = [
 ?>
 
 <section class="toolbar dpr-toolbar">
-    <form class="filterbar dpr-filter" method="get" action="<?= url('/shturman') ?>">
+    <details class="lemma-slice"<?= ($selectedProjectId !== '' || $selectedAssigneeId !== '' || $dateFrom !== '' || $dateTo !== '') ? ' open' : '' ?>><summary>Фильтры обзора · проект, участники и период</summary><form class="filterbar dpr-filter" method="get" action="<?= url('/shturman') ?>">
         <select name="project_id" aria-label="Фильтр по проекту">
             <option value="">Все проекты</option>
             <?php foreach ($projects as $project): ?>
@@ -285,14 +285,14 @@ $metricCards = [
         <?php if ($selectedProjectId !== '' || $selectedAssigneeId !== '' || $dateFrom !== '' || $dateTo !== ''): ?>
             <a class="btn" href="<?= url('/shturman') ?>">Сбросить</a>
         <?php endif; ?>
-	    </form>
+	    </form></details>
 	    <?php if ($canManageDashboard): ?>
-	    <div class="dpr-dashboard-actions">
+	    <details class="lemma-dashboard-tools"><summary>Настроить обзор и экспорт</summary><div class="dpr-dashboard-actions">
             <a class="btn btn-outline" href="<?= url('/reports/periodic') ?>">Периодический отчёт</a>
 	        <button class="btn btn-outline" type="button" data-dashboard-toggle>Переставить</button>
 	        <button class="btn" type="button" data-dashboard-reset hidden>Сброс</button>
 	        <button class="btn btn--red" type="button" onclick="window.print()">Экспорт</button>
-	    </div>
+	    </div></details>
 	    <?php endif; ?>
 	</section>
 
@@ -306,12 +306,78 @@ $metricCards = [
         <?php endforeach; ?>
     </section>
 
-        <section class="panel dpr-block dpr-block--full dpr-span-12" id="dpr-task-statistics" data-dashboard-widget="task-statistics">
-            <div class="panel__head dpr-block__head">
+        <details open class="panel dpr-block dpr-block--full dpr-span-12" data-dashboard-widget="overdue">
+            <summary class="panel__head dpr-block__head">
+                <h2>Просроченные без закрытия</h2>
+                <span><?= count($overdueWithoutClose) ?></span>
+                <?php $reorderControls(); ?>
+            </summary>
+        <div class="table-wrap table-wrap--compact dpr-table-wrap dpr-table-wrap--wide">
+            <table class="data-table data-table--compact dpr-table">
+                <thead>
+                <tr>
+                    <th>Проект</th>
+                    <th>ID</th>
+                    <th>Задача</th>
+                    <th>Исполнитель</th>
+                    <th>Срок</th>
+                    <th>Просрочено</th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($overdueWithoutClose as $row): ?>
+                    <tr class="clickable dpr-row-danger" data-href="<?= url('/tasks/' . $row['id']) ?>" data-task-drawer-href="<?= url('/tasks/' . $row['id']) ?>">
+                        <td><?= e($row['project_code']) ?></td>
+                        <td>#<?= (int) $row['id'] ?></td>
+                        <td><?= e($row['title']) ?></td>
+                        <td><?= e($row['assignee_name'] ?: '—') ?></td>
+                        <td class="date-red"><?= e(format_date($row['date_end']) ?: '—') ?></td>
+                        <td class="metric-value--bad"><?= (int) $row['overdue_days'] ?> дн.</td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if (!$overdueWithoutClose): $emptyRow(6); endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </details>
+<details open class="panel dpr-block dpr-span-12" id="dpr-approvals" data-dashboard-widget="approvals">
+	                <summary class="panel__head dpr-block__head">
+	                    <h2>Реестр согласований</h2>
+	                    <span><?= count($approvalRegistry) ?></span>
+	                    <?php $reorderControls(); ?>
+	                </summary>
+                <div class="table-wrap table-wrap--compact dpr-table-wrap">
+                    <table class="data-table data-table--compact dpr-table">
+                        <thead>
+                        <tr>
+                            <th>Проект</th>
+                            <th>Задача</th>
+                            <th>Этап</th>
+                            <th>Ждёт от</th>
+                            <th>Дней</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($approvalRegistry as $row): ?>
+                            <tr class="clickable <?= (int) $row['wait_days'] > 3 ? 'dpr-row-warn' : '' ?>" data-href="<?= url('/tasks/' . $row['id']) ?>" data-task-drawer-href="<?= url('/tasks/' . $row['id']) ?>">
+                                <td><?= e($row['project_code']) ?></td>
+                                <td>#<?= (int) $row['id'] ?> · <?= e($row['title']) ?></td>
+                                <td><?= e($row['stage_label']) ?></td>
+                                <td><?= e($row['waiting_for']) ?></td>
+                                <td class="<?= (int) $row['wait_days'] > 3 ? 'metric-value--warn' : '' ?>"><?= (int) $row['wait_days'] ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <?php if (!$approvalRegistry): $emptyRow(5); endif; ?>
+                        </tbody>
+	                    </table>
+	                </div>
+	            </details>
+<details class="panel dpr-block dpr-block--full dpr-span-12" id="dpr-task-statistics" data-dashboard-widget="task-statistics">
+            <summary class="panel__head dpr-block__head">
                 <h2>Статистика задач</h2>
                 <span><?= e((int) ($taskStatistics['overall']['total'] ?? 0)) ?> закрытых</span>
                 <?php $reorderControls(); ?>
-            </div>
+            </summary>
             <section class="metric-row project-summary-metrics cost-summary-metrics">
                 <div class="metric"><span><?= e($formatHours($taskStatistics['overall']['avg_planned_hours'] ?? 0)) ?></span><strong>Средний план, ч</strong></div>
                 <div class="metric"><span><?= e($formatHours($taskStatistics['overall']['avg_actual_hours'] ?? 0)) ?></span><strong>Средний факт, ч</strong></div>
@@ -338,14 +404,14 @@ $metricCards = [
                     </div>
                 </div>
             </div>
-        </section>
+        </details>
 
-        <section class="panel dpr-block dpr-block--full dpr-span-12 process-control-panel" id="dpr-process-control" data-dashboard-widget="process-control">
-            <div class="panel__head dpr-block__head">
+        <details class="panel dpr-block dpr-block--full dpr-span-12 process-control-panel" id="dpr-process-control" data-dashboard-widget="process-control">
+            <summary class="panel__head dpr-block__head">
                 <h2>Процессный контроль</h2>
                 <span>локально по задачам, проверкам и табелю</span>
                 <?php $reorderControls(); ?>
-            </div>
+            </summary>
             <section class="metric-row project-summary-metrics cost-summary-metrics">
                 <div class="metric"><span><?= (int) ($processOverall['open_tasks'] ?? 0) ?></span><strong>Открыто</strong></div>
                 <div class="metric"><span><?= e($formatHours($processOverall['avg_review_wait_days'] ?? 0)) ?></span><strong>Ожидание проверки, дн.</strong></div>
@@ -396,14 +462,14 @@ $metricCards = [
                     </div>
                 </div>
             </div>
-        </section>
+        </details>
 
-        <section class="panel dpr-block dpr-block--full dpr-span-12" id="dpr-people-distribution" data-dashboard-widget="people-distribution">
-            <div class="panel__head dpr-block__head">
+        <details class="panel dpr-block dpr-block--full dpr-span-12" id="dpr-people-distribution" data-dashboard-widget="people-distribution">
+            <summary class="panel__head dpr-block__head">
                 <h2>Распределение людей</h2>
                 <span><?= count($peopleMatrix) ?> × <?= count($objectColumns) ?></span>
                 <?php $reorderControls(); ?>
-            </div>
+            </summary>
             <div class="dpr-matrix-filters" data-people-matrix-filters>
                 <div class="dpr-picker" data-people-picker="person">
                     <label>
@@ -533,82 +599,18 @@ $metricCards = [
                 </tbody>
             </table>
         </div>
-    </section>
+    </details>
 
-        <section class="panel dpr-block dpr-block--full dpr-span-12" data-dashboard-widget="overdue">
-            <div class="panel__head dpr-block__head">
-                <h2>Просроченные без закрытия</h2>
-                <span><?= count($overdueWithoutClose) ?></span>
-                <?php $reorderControls(); ?>
-            </div>
-        <div class="table-wrap table-wrap--compact dpr-table-wrap dpr-table-wrap--wide">
-            <table class="data-table data-table--compact dpr-table">
-                <thead>
-                <tr>
-                    <th>Проект</th>
-                    <th>ID</th>
-                    <th>Задача</th>
-                    <th>Исполнитель</th>
-                    <th>Срок</th>
-                    <th>Просрочено</th>
-                </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($overdueWithoutClose as $row): ?>
-                    <tr class="clickable dpr-row-danger" data-href="<?= url('/tasks/' . $row['id']) ?>" data-task-drawer-href="<?= url('/tasks/' . $row['id']) ?>">
-                        <td><?= e($row['project_code']) ?></td>
-                        <td>#<?= (int) $row['id'] ?></td>
-                        <td><?= e($row['title']) ?></td>
-                        <td><?= e($row['assignee_name'] ?: '—') ?></td>
-                        <td class="date-red"><?= e(format_date($row['date_end']) ?: '—') ?></td>
-                        <td class="metric-value--bad"><?= (int) $row['overdue_days'] ?> дн.</td>
-                    </tr>
-                <?php endforeach; ?>
-                <?php if (!$overdueWithoutClose): $emptyRow(6); endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </section>
 
-	    <section class="panel dpr-block dpr-span-6" id="dpr-approvals" data-dashboard-widget="approvals">
-	                <div class="panel__head dpr-block__head">
-	                    <h2>Реестр согласований</h2>
-	                    <span><?= count($approvalRegistry) ?></span>
-	                    <?php $reorderControls(); ?>
-	                </div>
-                <div class="table-wrap table-wrap--compact dpr-table-wrap">
-                    <table class="data-table data-table--compact dpr-table">
-                        <thead>
-                        <tr>
-                            <th>Проект</th>
-                            <th>Задача</th>
-                            <th>Этап</th>
-                            <th>Ждёт от</th>
-                            <th>Дней</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($approvalRegistry as $row): ?>
-                            <tr class="clickable <?= (int) $row['wait_days'] > 3 ? 'dpr-row-warn' : '' ?>" data-href="<?= url('/tasks/' . $row['id']) ?>" data-task-drawer-href="<?= url('/tasks/' . $row['id']) ?>">
-                                <td><?= e($row['project_code']) ?></td>
-                                <td>#<?= (int) $row['id'] ?> · <?= e($row['title']) ?></td>
-                                <td><?= e($row['stage_label']) ?></td>
-                                <td><?= e($row['waiting_for']) ?></td>
-                                <td class="<?= (int) $row['wait_days'] > 3 ? 'metric-value--warn' : '' ?>"><?= (int) $row['wait_days'] ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <?php if (!$approvalRegistry): $emptyRow(5); endif; ?>
-                        </tbody>
-	                    </table>
-	                </div>
-	            </section>
 
-	    <section class="panel dpr-block dpr-span-6" id="dpr-data" data-dashboard-widget="data">
-	                <div class="panel__head dpr-block__head">
+
+
+	    <details class="panel dpr-block dpr-span-6" id="dpr-data" data-dashboard-widget="data">
+	                <summary class="panel__head dpr-block__head">
 	                    <h2>Реестр исходных данных</h2>
 	                    <span><?= count($dataRegistry) ?></span>
 	                    <?php $reorderControls(); ?>
-	                </div>
+	                </summary>
                 <div class="table-wrap table-wrap--compact dpr-table-wrap">
                     <table class="data-table data-table--compact dpr-table">
                         <thead>
@@ -636,14 +638,14 @@ $metricCards = [
                         </tbody>
 	                    </table>
 	                </div>
-	            </section>
+	            </details>
 
-	    <section class="panel dpr-block dpr-span-6" id="dpr-issues" data-dashboard-widget="issues">
-	                <div class="panel__head dpr-block__head">
+	    <details class="panel dpr-block dpr-span-6" id="dpr-issues" data-dashboard-widget="issues">
+	                <summary class="panel__head dpr-block__head">
 	                    <h2>Открытые вопросы</h2>
 	                    <span><?= count($openIssues) ?></span>
 	                    <?php $reorderControls(); ?>
-	                </div>
+	                </summary>
                 <div class="table-wrap table-wrap--compact dpr-table-wrap">
                     <table class="data-table data-table--compact dpr-table">
                         <thead>
@@ -670,14 +672,14 @@ $metricCards = [
                         </tbody>
 	                    </table>
 	                </div>
-	            </section>
+	            </details>
 
-	    <section class="panel dpr-block dpr-span-6" data-dashboard-widget="exchange">
-	                <div class="panel__head dpr-block__head">
+	    <details class="panel dpr-block dpr-span-6" data-dashboard-widget="exchange">
+	                <summary class="panel__head dpr-block__head">
 	                    <h2>Обмен заданиями — просроченные</h2>
 	                    <span><?= count($exchangeOverdue) ?></span>
 	                    <?php $reorderControls(); ?>
-	                </div>
+	                </summary>
                 <div class="table-wrap table-wrap--compact dpr-table-wrap">
                     <table class="data-table data-table--compact dpr-table">
                         <thead>
@@ -703,14 +705,14 @@ $metricCards = [
                         </tbody>
 	                    </table>
 	                </div>
-	            </section>
+	            </details>
 
-	    <section class="panel dpr-block dpr-span-6" data-dashboard-widget="issuances">
-	                <div class="panel__head dpr-block__head">
+	    <details class="panel dpr-block dpr-span-6" data-dashboard-widget="issuances">
+	                <summary class="panel__head dpr-block__head">
 	                    <h2>Реестр выдач томов</h2>
 	                    <span><?= count($volumeIssuances) ?></span>
 	                    <?php $reorderControls(); ?>
-	                </div>
+	                </summary>
                 <div class="table-wrap table-wrap--compact dpr-table-wrap">
                     <table class="data-table data-table--compact dpr-table">
                         <thead>
@@ -736,14 +738,14 @@ $metricCards = [
                         </tbody>
 	                    </table>
 	                </div>
-	            </section>
+	            </details>
 
-	    <section class="panel dpr-block dpr-span-6" data-dashboard-widget="schedule">
-	                <div class="panel__head dpr-block__head">
+	    <details class="panel dpr-block dpr-span-6" data-dashboard-widget="schedule">
+	                <summary class="panel__head dpr-block__head">
 	                    <h2>График выдачи — ближайшие 14 дней</h2>
 	                    <span><?= count($upcomingSchedule) ?></span>
 	                    <?php $reorderControls(); ?>
-	                </div>
+	                </summary>
                 <div class="table-wrap table-wrap--compact dpr-table-wrap">
                     <table class="data-table data-table--compact dpr-table">
                         <thead>
@@ -770,14 +772,14 @@ $metricCards = [
                         </tbody>
 	                    </table>
 	                </div>
-	            </section>
+	            </details>
 
-	    <section class="panel dpr-block dpr-span-6" data-dashboard-widget="workload">
-	                <div class="panel__head dpr-block__head">
+	    <details class="panel dpr-block dpr-span-6" data-dashboard-widget="workload">
+	                <summary class="panel__head dpr-block__head">
 	                    <h2>Нагрузка по исполнителям</h2>
 	                    <span><?= count($workload) ?></span>
 	                    <?php $reorderControls(); ?>
-	                </div>
+	                </summary>
                 <div class="table-wrap table-wrap--compact dpr-table-wrap">
                     <table class="data-table data-table--compact dpr-table">
                         <thead>
@@ -809,5 +811,5 @@ $metricCards = [
                         </tbody>
 	                    </table>
 	                </div>
-	            </section>
+	            </details>
 	</section>

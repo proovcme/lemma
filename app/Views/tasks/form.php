@@ -282,17 +282,12 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
     <section class="panel task-form-card task-form-card--primary">
         <div class="panel__head task-form-head">
             <div>
-                <h2><?= $isEdit ? 'Редактирование задачи' : 'Быстрое создание задачи' ?></h2>
-                <p><?= $isEdit ? 'Главные поля сверху, технические детали ниже.' : 'Сначала выберите действие, а форма подстроит поля под рабочий сценарий.' ?></p>
+                <h2><?= $isEdit ? 'Редактирование задачи' : '1. Какой результат нужен' ?></h2>
+                <p><?= $isEdit ? 'Главные поля сверху, технические детали ниже.' : 'Опишите работу. Затем укажите, кто отвечает и когда нужен результат.' ?></p>
             </div>
         </div>
 
-        <div class="task-required-note" role="note">
-            <strong>Сначала обязательное</strong>
-            <span>Поля с отметкой «Обязательно» должны быть заполнены до сохранения.</span>
-        </div>
-
-        <div class="task-kind" data-task-kind>
+        <details class="task-kind lemma-task-kind" data-task-kind><summary>Тип действия: <strong data-lemma-intent-label><?= e($currentIntent['title']) ?></strong><span>Изменить</span></summary>
             <div class="task-form-section-title">
                 <span>Тип задачи <em class="field-required">Обязательно</em></span>
                 <b data-task-kind-meta><?= e($currentIntent['meta']) ?></b>
@@ -330,7 +325,7 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
             <?php foreach ($taskIntents as $intentKey => $card): ?>
                 <p class="task-kind-note" data-task-kind-panel="<?= e($intentKey) ?>"><?= e($card['hint']) ?></p>
             <?php endforeach; ?>
-        </div>
+        </details>
 
         <?php if ($hasAtlasContext): ?>
             <div class="task-atlas-context">
@@ -346,6 +341,12 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
                 <input name="title" required placeholder="<?= e($currentIntent['title_placeholder']) ?>" value="<?= e($task['title'] ?? ($_GET['title'] ?? '')) ?>" data-intent-placeholder="title">
             </label>
 
+            <label class="task-form-wide" data-tour="task-form-smart">
+                <span><span data-intent-label="what"><?= e($currentIntent['what_label']) ?></span> <em class="field-required">Обязательно</em></span>
+                <textarea name="what" rows="3" required placeholder="<?= e($currentIntent['what_placeholder']) ?>" data-intent-placeholder="what"><?= e($smart['what'] ?? ($_GET['what'] ?? '')) ?></textarea>
+            </label>
+
+<div class="lemma-form-step task-form-wide">2. Ответственный и срок</div>
             <?php if ($projectLocked): ?>
                 <div class="task-project-context" data-tour="task-form-project">
                     <input type="hidden" name="project_id" id="task-project-select" value="<?= (int) $selectedProject['id'] ?>">
@@ -439,10 +440,7 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
                 <input type="number" min="0.25" step="0.25" name="planned_hours" required value="<?= e($task['planned_hours'] ?? ($_GET['planned_hours'] ?? '')) ?>">
             </label>
 
-            <label class="task-form-wide" data-tour="task-form-smart">
-                <span><span data-intent-label="what"><?= e($currentIntent['what_label']) ?></span> <em class="field-required">Обязательно</em></span>
-                <textarea name="what" rows="3" required placeholder="<?= e($currentIntent['what_placeholder']) ?>" data-intent-placeholder="what"><?= e($smart['what'] ?? ($_GET['what'] ?? '')) ?></textarea>
-            </label>
+
 
             <?php if (!$isEdit): ?>
                 <label class="task-attachment-picker task-form-wide" data-task-attachment-picker>
@@ -457,7 +455,7 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
                 </label>
             <?php endif; ?>
 
-            <div class="task-form-optional-divider task-form-wide"><span>Дополнительно</span></div>
+            <div class="lemma-form-step task-form-wide">Кто принимает результат</div>
 
             <label data-tour="task-form-reviewer" data-intent-panel="work assign_out assign_request issuance labor_estimate bim_family_request" data-intent-edit-strict="1">
                 <span>Проверяющий результата</span>
@@ -470,18 +468,18 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
                 <small class="muted">Для сдачи результата. Если не выбран, система назначит автоматически.</small>
             </label>
 
-            <?php $participantDropdown('participant_coauthor_ids', 'Соавторы', $selectedParticipantIds['coauthor'], $users); ?>
+<details class="lemma-task-extra task-form-wide"><summary>Соавторы, наблюдатели и контекст</summary><div class="task-form-quick">            <?php $participantDropdown('participant_coauthor_ids', 'Соавторы', $selectedParticipantIds['coauthor'], $users); ?>
             <?php $participantDropdown('participant_observer_ids', 'Согласующие / наблюдатели', $selectedParticipantIds['observer'], $users); ?>
 
             <label class="task-form-wide">
                 <span data-intent-label="why"><?= e($currentIntent['why_label']) ?></span>
                 <textarea name="why" rows="2" placeholder="<?= e($currentIntent['why_placeholder']) ?>" data-intent-placeholder="why"><?= e($smart['why'] ?? ($_GET['why'] ?? '')) ?></textarea>
-            </label>
+            </label></div></details>
         </div>
 
         <div class="task-form-composition" data-intent-panel="work assign_out assign_request issuance labor_estimate delegate_department bim_family_request">
             <div class="task-form-section-title">
-                <span>Классификация задачи</span>
+                <span>3. Раздел и привязки</span>
             </div>
             <div class="task-form-composition__grid">
                 <label class="task-form-wide">
@@ -496,7 +494,7 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
                     <small class="muted">Единственная обязательная привязка задачи к проектному содержанию.</small>
                 </label>
 
-                <label>
+<details class="lemma-task-extra task-form-wide"><summary>Учётные статьи и зависимость от другой задачи</summary><div class="task-form-composition__grid">                <label>
                     <span>ПП / сделка</span>
                     <select name="pp_code_id" data-project-accounting-pp>
                         <option value="">Не выбрана</option>
@@ -541,7 +539,7 @@ $requiredCustomCount = count($customFieldGroups['required']['fields']);
                             </option>
                         <?php endforeach; ?>
                     </select>
-                </label>
+                </label></div></details>
             </div>
         </div>
     </section>

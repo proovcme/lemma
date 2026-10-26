@@ -20,6 +20,7 @@ $canReviewTime = $user ? \App\Services\PermissionService::canReviewTime($user) :
 $canOpenCalculator = is_file((string) config('app.calculator_bundle_path') . '/index.html') && $user ? \App\Controllers\CalculatorController::canAccessRole($user['role'] ?? null) : false;
 $isEngineer = $user && \App\Services\RoleService::isAny($user['role'] ?? null, [\App\Services\RoleService::ENGINEER]);
 $canCreateGlobalTask = $user && !$isEngineer && \App\Services\PermissionService::canCreateTasks($user);
+if (!empty($headerActions) || preg_match('#^/(tasks|projects)(/|$)#', $currentPath)) $canCreateGlobalTask = false;
 $isDrawerPage = ($_GET['drawer'] ?? '') === '1';
 $globalSearchQuery = $currentPath === '/search' ? trim((string) ($_GET['q'] ?? '')) : '';
 $globalTaskHref = '/tasks/new';
@@ -35,7 +36,7 @@ if ($isDrawerPage) {
 if (in_array($currentPath, ['/locia', '/work', '/tasks', '/tasks/all'], true)) {
     $bodyClasses[] = 'is-task-hub-page';
 }
-$bodyClasses[] = 'is-demo-theme';
+$bodyClasses[] = 'is-demo-theme lemma-app';
 $layoutData = \App\Services\LayoutService::getLayoutData();
 $notificationCount = $layoutData['notificationCount'];
 $reviewCount = $layoutData['reviewCount'];
@@ -61,139 +62,11 @@ $versionInfo = app_version_info();
     <link rel="apple-touch-icon" href="<?= url('/pwa/apple-touch-icon.png') ?>">
     <link rel="manifest" href="<?= url('/manifest.webmanifest') ?>">
     <link rel="stylesheet" href="<?= asset('app.css') ?>">
-</head>
-<body class="<?= e(implode(' ', $bodyClasses)) ?>" data-unread-notifications="<?= $notificationCount ?>">
+<link rel="stylesheet" href="<?= asset('lemma/design.css') ?>"></head>
+<body class="<?= e(implode(' ', $bodyClasses)) ?>" data-unread-notifications="<?= $notificationCount ?>" data-lemma-user="<?= (int) $user['id'] ?>">
 <a class="skip-link" href="#main-content">К содержимому</a>
-<div class="app-shell">
-    <aside class="sidebar">
-        <a class="brand" href="<?= url($homePath) ?>">
-            <span class="brand__mark"><?= e(app_brand_mark()) ?></span>
-            <span class="brand__sub" title="<?= e(role_sidebar_label($userRole)) ?>"><?= e(role_sidebar_label($userRole)) ?></span>
-        </a>
-        <form class="global-search" method="get" action="<?= url('/search') ?>">
-            <input type="search" name="q" value="<?= e($globalSearchQuery) ?>" placeholder="Поиск в системе" aria-label="Поиск в системе">
-            <button type="submit" aria-label="Найти"><span aria-hidden="true">⌕</span><span class="sr-only">Найти</span></button>
-        </form>
-        <nav class="nav" aria-label="Основная навигация">
-            <?php if (!app_is_demo_mode()): ?>
-                <a class="nav__link<?= active_link('/knowledge') ?>" href="<?= url('/knowledge') ?>">База знаний</a>
-            <?php endif; ?>
-            <div class="nav__group">Работа</div>
-            <a class="nav__link<?= active_link('/my-day') ?>" href="<?= url('/my-day') ?>">Мой день</a>
-            <a class="nav__link<?= active_link('/notes') ?>" href="<?= url('/notes') ?>">Заметки</a>
-            <a class="nav__link<?= active_link('/time') ?>" href="<?= url('/time') ?>">Время</a>
-            <?php if (!app_is_demo_mode() && $managerReviewCount > 0): ?>
-                <a class="nav__link<?= active_link('/performance-review/manager') ?>" href="<?= url('/performance-review/manager') ?>">Оценки сотрудников<?php if ($managerReviewReadyCount > 0): ?><span class="nav-badge"><?= $managerReviewReadyCount ?></span><?php endif; ?></a>
-            <?php endif; ?>
-            <?php if ($canOpenProjects): ?>
-                <a class="nav__link<?= active_link('/projects') ?>" href="<?= url('/projects') ?>">Проекты</a>
-                <?php if ($sidebarProjects): ?>
-                    <div class="nav-projects">
-                        <?php foreach ($sidebarProjects as $sidebarProject): ?>
-                            <a class="nav-project<?= str_starts_with(request_path(), '/projects/' . $sidebarProject['id']) ? ' is-active' : '' ?>" href="<?= url('/projects/' . $sidebarProject['id']) ?>">
-                                <span><?= e($sidebarProject['code']) ?></span>
-                                <small><?= e($sidebarProject['title']) ?></small>
-                                <?php if ((int) $sidebarProject['open_tasks'] > 0): ?><b><?= (int) $sidebarProject['open_tasks'] ?></b><?php endif; ?>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            <?php endif; ?>
-
-            <?php if ($canOpenProjects): ?>
-                <div class="nav__group">ТИМ</div>
-                <?php if (config('integrations.atlas_url', '') !== ''): ?><a class="nav__link<?= active_link('/locia-atlas') ?>" href="<?= atlas_url() ?>"<?= config('integrations.atlas_url', '') !== '' ? ' target="_blank" rel="noreferrer"' : '' ?>>Атлас</a><?php endif; ?>
-                <a class="nav__link<?= active_link('/tasks/bim-family') ?>" href="<?= url('/tasks/bim-family') ?>">Заявки</a>
-            <?php endif; ?>
-
-            <?php if (!app_is_demo_mode() && ($canBrowseProfiles || $canManageUsers || $canOpenHr)): ?>
-                <?php if ($canBrowseProfiles || $canManageUsers): ?>
-                    <div class="nav__group">Команда</div>
-                    <a class="nav__link<?= active_link('/team') ?>" href="<?= url('/team') ?>">Управление командой</a>
-                <?php endif; ?>
-                <?php if ($canOpenHr): ?>
-                    <div class="nav__group">HR</div>
-                    <a class="nav__link<?= active_link('/hr') ?>" href="<?= url('/hr') ?>">Performance Review</a>
-                <?php endif; ?>
-            <?php endif; ?>
-
-            <?php if ($canManageDepartmentBudget): ?>
-                <div class="nav__group">Директор</div>
-                <a class="nav__link<?= active_link('/director/portfolio') ?>" href="<?= url('/director/portfolio') ?>">Портфель проектов</a>
-                <a class="nav__link<?= active_link('/director/staffing') ?>" href="<?= url('/director/staffing') ?>">Штатное расписание</a>
-                <a class="nav__link<?= active_link('/director/budget') ?>" href="<?= url('/director/budget') ?>">Бюджет</a>
-            <?php endif; ?>
-
-            <?php if ($canOpenDpr || $canOpenReports || $canReviewTime || $canOpenCalculator): ?>
-                <div class="nav__group">Управление</div>
-                <?php if ($canOpenDpr): ?>
-                    <a class="nav__link<?= active_link_any(['/shturman', '/golem', '/dpr']) ?>" href="<?= url('/shturman') ?>">Дашборд</a>
-                <?php endif; ?>
-                <?php if ($canOpenReports): ?>
-                    <a class="nav__link<?= active_link('/reports') ?>" href="<?= url('/reports') ?>">Отчёты</a>
-                <?php endif; ?>
-                <?php if ($canReviewTime): ?><a class="nav__link<?= active_link('/time/approvals') ?>" href="<?= url('/time/approvals') ?>">Приёмка времени</a><?php endif; ?>
-                <?php if ($canOpenReports): ?><a class="nav__link<?= active_link('/activity') ?>" href="<?= url('/activity') ?>">История</a><?php endif; ?>
-                <?php if ($canOpenCalculator): ?><a class="nav__link<?= active_link('/calculator') ?>" href="<?= url('/calculator') ?>">Калькулятор</a><?php endif; ?>
-            <?php endif; ?>
-            <?php if (!app_is_demo_mode() && ($canManageUsers || $canManageSettings)): ?>
-                <div class="nav__group">Администрирование</div>
-                <?php if ($canManageUsers): ?>
-                    <a class="nav__link<?= active_link('/admin/users') ?>" href="<?= url('/admin/users') ?>">Пользователи</a>
-                <?php endif; ?>
-                <?php if ($canOpenCompetency): ?>
-                    <a class="nav__link<?= active_link('/admin/competencies') ?>" href="<?= url('/admin/competencies') ?>">Компетенции</a>
-                <?php endif; ?>
-                <?php if ($canManageSettings): ?>
-                    <details class="nav-menu<?= $adminSettingsActive ? ' is-active' : '' ?>"<?= $adminSettingsActive ? ' open' : '' ?>>
-                        <summary class="nav-menu__summary">Настройки</summary>
-                        <div class="nav-menu__items">
-                            <a class="nav__link<?= active_link('/admin/access') ?>" href="<?= url('/admin/access') ?>">Доступы</a>
-                            <a class="nav__link<?= active_link('/admin/dictionaries') ?>" href="<?= url('/admin/dictionaries') ?>">Справочники</a>
-                            <a class="nav__link<?= active_link('/admin/counterparties') ?>" href="<?= url('/admin/counterparties') ?>">Контрагенты</a>
-                            <a class="nav__link<?= active_link('/admin/exchange-templates') ?>" href="<?= url('/admin/exchange-templates') ?>">Матрицы заданий</a>
-                            <a class="nav__link<?= active_link('/admin/fields') ?>" href="<?= url('/admin/fields') ?>">Кастом-поля</a>
-                            <a class="nav__link<?= active_link('/admin/integrations') ?>" href="<?= url('/admin/integrations') ?>">Интеграции</a>
-                            <a class="nav__link<?= active_link('/admin/database-export') ?>" href="<?= url('/admin/database-export') ?>">Выгрузка базы</a>
-                            <a class="nav__link<?= active_link('/admin/notifications') ?>" href="<?= url('/admin/notifications') ?>">Шаблоны писем</a>
-                            <a class="nav__link<?= active_link('/admin/password-gen') ?>" href="<?= url('/admin/password-gen') ?>">Пароли</a>
-                        </div>
-                    </details>
-                <?php endif; ?>
-                <?php if ($canManagePayroll): ?>
-                    <?php $payrollActive = active_link_any(['/admin/legal-entities', '/admin/writeoff-articles', '/admin/employee-entities', '/motivation', '/motivation/projects', '/motivation/settings']) !== ''; ?>
-                    <details class="nav-menu<?= $payrollActive ? ' is-active' : '' ?>"<?= $payrollActive ? ' open' : '' ?>>
-                        <summary class="nav-menu__summary">ФОТ</summary>
-                        <div class="nav-menu__items">
-                            <a class="nav__link<?= active_link('/motivation') ?>" href="<?= url('/motivation') ?>">Мотивация</a>
-                            <a class="nav__link<?= active_link('/motivation/projects') ?>" href="<?= url('/motivation/projects') ?>">Фонды проектов</a>
-                            <a class="nav__link<?= active_link('/motivation/settings') ?>" href="<?= url('/motivation/settings') ?>">Настройки мотивации</a>
-                            <a class="nav__link<?= active_link('/admin/legal-entities') ?>" href="<?= url('/admin/legal-entities') ?>">Юрлица</a>
-                            <a class="nav__link<?= active_link('/admin/writeoff-articles') ?>" href="<?= url('/admin/writeoff-articles') ?>">Статьи списания</a>
-                            <a class="nav__link<?= active_link('/admin/employee-entities') ?>" href="<?= url('/admin/employee-entities') ?>">Сотрудники и ставки</a>
-                        </div>
-                    </details>
-                <?php endif; ?>
-            <?php endif; ?>
-        </nav>
-        <div class="sidebar__footer">
-            <a class="user-mini user-mini--link" href="<?= url('/profile') ?>" aria-label="Открыть мой профиль">
-                <div class="avatar"><?= e(initials($user['name'] ?? '')) ?></div>
-                <div>
-                    <strong><?= e($user['name'] ?? '') ?></strong>
-                    <span><?= e(role_label($user['role'] ?? '')) ?></span>
-                </div>
-            </a>
-            <button class="tour-start" type="button" data-tour-start>Учебник</button>
-            <?php if (!app_is_demo_mode()): ?>
-                <button class="version-badge" type="button" data-release-notes-open title="Что нового">v<?= e($versionInfo['version']) ?></button>
-            <?php endif; ?>
-            <form class="logout-form" method="post" action="<?= url('/logout') ?>">
-                <?= csrf_field() ?>
-                <button class="link-muted" type="submit">Выйти</button>
-            </form>
-        </div>
-    </aside>
+<div class="lemma-mobile-head"><strong>лемма</strong><button class="btn" type="button" data-lemma-menu aria-controls="lemma-sidebar" aria-expanded="false">Меню</button><button class="btn" type="button" data-lemma-launch>Поиск</button></div><div class="app-shell">
+    <aside class="sidebar lemma-sidebar" id="lemma-sidebar"><?php require BASE_PATH . '/app/Views/components/lemma_navigation.php'; ?></aside>
 
     <main class="main" id="main-content">
         <header class="topbar">
@@ -211,10 +84,10 @@ $versionInfo = app_version_info();
                     <?php if ($canCreateGlobalTask): ?>
                         <a class="btn btn--red topbar-task-button" href="<?= url($globalTaskHref) ?>">+ Задача</a>
                     <?php endif; ?>
-                    <?php if (!$isDrawerPage): ?>
+                    <?php if (!$isDrawerPage && !app_is_demo_mode()): ?>
                         <a class="btn btn-outline topbar-help-button" href="<?= url($contextHelpHref) ?>">Справка</a>
                     <?php endif; ?>
-                    <?php foreach (($headerActions ?? []) as $action): ?>
+                    <?php foreach (($headerActions ?? []) as $action): if (($action['form'] ?? '') === 'task-form') continue; ?>
                         <?php if (($action['type'] ?? 'link') === 'button'): ?>
                             <button class="btn <?= e($action['class'] ?? '') ?>" type="<?= e($action['buttonType'] ?? 'button') ?>"<?= !empty($action['form']) ? ' form="' . e($action['form']) . '" data-submit-form="' . e($action['form']) . '"' : '' ?>><?= e($action['label']) ?></button>
                         <?php elseif (($action['type'] ?? 'link') === 'form'): ?>
@@ -304,5 +177,5 @@ $versionInfo = app_version_info();
 <?php endif; ?>
 <script src="<?= asset('app.js') ?>"></script>
 <script src="<?= asset('pwa.js') ?>" defer></script>
-</body>
+<?php require BASE_PATH . '/app/Views/components/lemma_tools.php'; ?></body>
 </html>

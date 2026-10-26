@@ -1,0 +1,8 @@
+<dialog id="lemma-command" class="lemma-command" aria-labelledby="lemma-command-title">
+ <div class="lemma-command-head"><h2 id="lemma-command-title">Куда переходим?</h2><button type="button" class="btn" data-lemma-command-close aria-label="Закрыть быстрые переходы">Esc</button></div>
+ <form method="get" action="<?= url('/search') ?>" class="lemma-command-search"><label class="sr-only" for="lemma-command-query">Поиск в системе</label><input id="lemma-command-query" type="search" name="q" placeholder="Задача, проект или переход…" autocomplete="off"><button class="btn primary" type="submit">Найти</button></form>
+ <div class="lemma-command-links"><?php if (\App\Services\PermissionService::canCreateTasks(current_user())): ?><a href="<?= url('/tasks/new'.(!empty($project['id']) ? '?project_id='.(int)$project['id'] : '')) ?>"><strong>＋ Новая задача</strong><small>Сформулировать результат и назначить</small></a><?php endif; ?><a href="<?= url('/my-day') ?>"><strong>Мой день</strong><small>Что требует моего действия</small></a><?php if (\App\Services\PermissionService::canOpenProjects(current_user())): ?><a href="<?= url('/projects') ?>"><strong>Проекты</strong><small>Состояние работ и команда</small></a><?php endif; ?><a href="<?= url('/time') ?>"><strong>Записать время</strong><small>По задаче или проекту</small></a></div>
+ <p class="lemma-command-caption">Недавно открывали · в этом браузере</p><div data-lemma-recent class="lemma-command-links"></div><p class="lemma-command-empty" hidden>Переходов нет. Нажмите «Найти», чтобы искать в системе.</p>
+</dialog>
+<div class="lemma-announcer" role="status" aria-live="polite" aria-atomic="true"></div>
+<script src="<?= asset('lemma/flow.js') ?>" defer></script>

@@ -1,5 +1,5 @@
 <section class="toolbar">
-    <div class="toolbar__title"><?= !empty($isArchive) ? 'Архив проектов' : 'Проекты' ?></div>
+
     <?php if ($canCreate): ?>
         <?php if (!empty($isArchive)): ?>
             <a class="btn btn-outline" href="<?= url('/projects') ?>">Активные проекты</a>
@@ -10,6 +10,8 @@
     <?php endif; ?>
 </section>
 
+<div class="lemma-project-filter"><label class="sr-only" for="lemma-project-query">Найти проект</label><input id="lemma-project-query" type="search" placeholder="Найти по названию, шифру или объекту" data-lemma-project-search><label class="sr-only" for="lemma-project-state">Состояние проектов</label><select id="lemma-project-state" data-lemma-project-state><option value="all">Все проекты</option><option value="attention">Требуют внимания</option></select><span class="lemma-project-count" data-lemma-project-count role="status"></span></div>
+<p class="lemma-project-empty" data-lemma-project-empty hidden>Таких проектов нет. Измените поиск или выберите «Все проекты».</p>
 <section class="project-grid">
     <?php foreach ($projects as $project): ?>
         <?php
@@ -19,7 +21,7 @@
         $deadlineClass = deadline_state_class($project['nearest_deadline'] ?? null);
         $deadlineDisplay = (string) ($project['nearest_deadline'] ?? '') !== '' ? format_date($project['nearest_deadline']) : '—';
         ?>
-        <a class="project-card" href="<?= url('/projects/' . $project['id']) ?>" style="--project-color: <?= e($project['color'] ?: '#cc1f1f') ?>">
+        <a data-lemma-project-card data-attention="<?= (int) (($project['tasks_blocked'] ?? 0) > 0 || (!empty($project['nearest_deadline']) && $project['nearest_deadline'] < date('Y-m-d'))) ?>" class="project-card" href="<?= url('/projects/' . $project['id']) ?>" style="--project-color: <?= e($project['color'] ?: '#cc1f1f') ?>">
             <div class="project-card__top">
                 <strong><?= e($project['code']) ?></strong>
                 <span><?= !empty($isArchive) ? 'Архив' : e($project['stage']) ?></span>

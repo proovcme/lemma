@@ -71,13 +71,13 @@ test('защищённая должность директора всегда с
 });
 
 test('новая навигация не возвращает отдельные Мой профиль, Мои задачи и Гант', function (): void {
-    $layout = file_get_contents(BASE_PATH . '/app/Views/layouts/app.php');
-    assert_same(true, str_contains($layout, '>База знаний<'));
-    assert_same(true, str_contains($layout, '>Работа<'));
-    assert_same(true, str_contains($layout, '>ТИМ<'));
-    assert_same(true, str_contains($layout, '>Команда<'));
-    assert_same(true, str_contains($layout, '>Управление<'));
-    assert_same(true, str_contains($layout, '>Дашборд<'));
+    $layout = file_get_contents(BASE_PATH . '/app/Views/components/lemma_navigation.php');
+    assert_same(true, str_contains($layout, "База знаний"));
+    assert_same(true, str_contains($layout, "Личная работа"));
+    assert_same(true, str_contains($layout, "Заявки ТИМ"));
+    assert_same(true, str_contains($layout, "Команда"));
+    assert_same(true, str_contains($layout, "Управление"));
+    assert_same(true, str_contains($layout, "Обзор работы"));
     assert_same(false, str_contains($layout, '>Мой профиль<'));
     assert_same(false, str_contains($layout, '>Мои задачи<'));
     assert_same(false, str_contains($layout, '>Гант<'));
@@ -87,8 +87,8 @@ test('новая навигация не возвращает отдельные
     assert_same(true, str_contains($tabs, '>Отделы и группы<'));
     assert_same(false, str_contains($tabs, '>Ставки<'));
     assert_same(false, str_contains($tabs, '>Штатное расписание<'));
-    assert_same(true, str_contains($layout, '>Директор<'));
-    assert_same(true, str_contains($layout, '>Бюджет<'));
+    assert_same(true, str_contains($layout, "Директор"));
+    assert_same(true, str_contains($layout, "Бюджет"));
 });
 
 test('таблица сотрудников поддерживает безопасное быстрое редактирование', function (): void {

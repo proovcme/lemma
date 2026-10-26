@@ -120,7 +120,7 @@ uasort($projectGroups, static fn (array $left, array $right): int => strnatcasec
 ?>
 <section class="tasks-screen" data-tour-surface="task-list">
     <?php $overdueCount = count(array_filter($tasks, fn ($task) => $task['status'] === 'overdue')); ?>
-    <?php if ($overdueCount > 0): ?>
+    <?php if ($overdueCount > 0 && !$dailyPicture): ?>
         <div class="overdue-banner">
             <span>Просроченные без закрытия</span>
             <strong><?= $overdueCount ?></strong>
@@ -144,13 +144,14 @@ uasort($projectGroups, static fn (array $left, array $right): int => strnatcasec
         ];
         ?>
         <section class="metric-row project-summary-metrics task-day-metrics" data-tour="day-picture" aria-label="Картина дня">
-            <?php foreach ($dayCards as $card): ?>
+            <?php foreach (array_map(static fn ($i) => $dayCards[$i], [0,1,2,4]) as $card): ?>
                 <a class="metric metric--<?= e($card['tone']) ?>" href="<?= e($card['href']) ?>">
                     <span><?= (int) $card['value'] ?></span>
                     <strong><?= e($card['label']) ?></strong>
                 </a>
             <?php endforeach; ?>
         </section>
+        <details class="lemma-task-totals"><summary>Ближайшая неделя, блокировки и обмен заданиями</summary><div><?php foreach (array_map(static fn ($i) => $dayCards[$i], [3,5,6,7,8]) as $card): ?><a href="<?= e($card['href']) ?>"><?= e($card['label']) ?><strong><?= (int) $card['value'] ?></strong></a><?php endforeach; ?></div></details>
     <?php endif; ?>
 
     <section class="task-commandbar">

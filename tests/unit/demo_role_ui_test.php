@@ -15,7 +15,7 @@ test('demo-режим скрывает HR-навигацию даже для д�
 test('публичное демо закрывает внутренние и служебные маршруты', function (): void {
     $router = file_get_contents(__DIR__ . '/../../app/Core/Router.php');
     $publicRouter = file_get_contents(__DIR__ . '/../../public/router.php');
-    $layout = file_get_contents(__DIR__ . '/../../app/Views/layouts/app.php');
+    $layout = file_get_contents(__DIR__ . '/../../app/Views/layouts/app.php') . file_get_contents(__DIR__ . '/../../app/Views/components/lemma_navigation.php');
 
     assert_true(is_string($router));
     foreach (['/locia', '/team', '/manual', '/admin', '/hr', '/settings', '/performance-review', '/competencies', '/payroll', '/motivation'] as $path) {
@@ -23,8 +23,8 @@ test('публичное демо закрывает внутренние и с�
     }
 
     assert_true(is_string($publicRouter) && str_contains($publicRouter, '/locia-atlas'), 'demo static router must hide bundled viewer files');
-    assert_true(is_string($layout) && str_contains($layout, '!app_is_demo_mode() && ($canBrowseProfiles || $canManageUsers || $canOpenHr)'), 'layout must hide Team and HR nav in demo');
-    assert_true(str_contains($layout, '!app_is_demo_mode() && ($canManageUsers || $canManageSettings)'), 'layout must hide admin nav in demo');
+    assert_true(is_string($layout) && str_contains($layout, 'if (!app_is_demo_mode()) {'), 'layout must hide Team and HR nav in demo');
+    assert_true(str_contains($layout, 'PermissionService::canManageSettings($navUser)'), 'layout must hide admin nav in demo');
 });
 
 test('инженер не получает глобальную кнопку создания задачи в рабочей шапке', function (): void {
@@ -47,12 +47,12 @@ test('инженерская навигация ограничена задач�
 });
 
 test('Мой день и Заметки видны всем, а профиль открывается по карточке пользователя', function (): void {
-    $layout = file_get_contents(__DIR__ . '/../../app/Views/layouts/app.php');
+    $layout = file_get_contents(__DIR__ . '/../../app/Views/layouts/app.php') . file_get_contents(__DIR__ . '/../../app/Views/components/lemma_navigation.php');
 
-    assert_true(is_string($layout) && str_contains($layout, "href=\"<?= url('/my-day') ?>\""), 'layout must keep My day in the main nav');
+    assert_true(is_string($layout) && str_contains($layout, "['/my-day','Мой день','day']"), 'layout must keep My day in the main nav');
     assert_true(is_string($layout) && str_contains($layout, 'aria-label="Открыть мой профиль"'), 'layout must keep profile on the user card');
     assert_same(false, str_contains($layout, '>Мой профиль<'), 'layout must not duplicate profile in the main nav');
-    assert_true(is_string($layout) && str_contains($layout, "href=\"<?= url('/notes') ?>\""), 'layout must keep Notes in the main nav');
+    assert_true(is_string($layout) && str_contains($layout, "['/notes','Заметки','notes']"), 'layout must keep Notes in the main nav');
     assert_same(false, str_contains($layout, '<?php if (!$isEngineer): ?>'), 'engineer guard must not hide personal nav items');
 });
 

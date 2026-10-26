@@ -13,8 +13,8 @@
     <link rel="apple-touch-icon" href="<?= url('/pwa/apple-touch-icon.png') ?>">
     <link rel="manifest" href="<?= url('/manifest.webmanifest') ?>">
     <link rel="stylesheet" href="<?= asset('app.css') ?>">
-</head>
-<body class="guest is-demo-theme">
+<link rel="stylesheet" href="<?= asset('lemma/design.css') ?>"></head>
+<body class="guest is-demo-theme lemma-app">
 <main class="guest-card">
     <?php if ($message = flash('success')): ?>
         <div class="alert alert--success"><?= e($message) ?></div>
