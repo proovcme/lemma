@@ -1,0 +1,18 @@
+<?php
+$taskId=(int)$task['id'];$flow=$task['flow'];$canSubmit=$flow['can_time'] && in_array($task['task_type']??'work',['work','assignment'],true) && (int)($task['reviewer_id']??0)>0;
+?>
+<article class="day-entry<?= $currentGroup==='Просрочено'?' is-overdue':'' ?>" data-day-task="<?= $taskId ?>">
+<div class="day-entry-main"><div>
+<span class="day-action-label"><?= e($flow['step']) ?></span>
+<h2><a href="<?= url('/tasks/'.$taskId) ?>"><?= e($task['title']) ?></a></h2>
+<p class="muted"><?= e($task['project_code'].' · '.$task['project_title']) ?></p>
+<p class="day-flow-reason"><?= e($flow['reason']) ?></p>
+<small>#<?= $taskId ?> · <?= e($task['date_end']?'Срок: '.format_date($task['date_end']):'Срок не задан') ?><?= !empty($task['substitute_for_name'])?' · Замещение: '.e($task['substitute_for_name']):'' ?></small>
+</div>
+<?php if($flow['can_accept']): ?><form method="post" action="<?= url('/tasks/'.$taskId.'/assignment-response') ?>"><?= csrf_field() ?><input type="hidden" name="decision" value="accepted"><input type="hidden" name="back" value="/my-day?day=work"><button class="btn primary" type="submit"><?= e($flow['button']) ?></button></form>
+<?php else: ?><a class="btn <?= $flow['bucket']==='actions'?'primary':'' ?>" href="<?= url('/tasks/'.$taskId) ?>"><?= e($flow['button']) ?></a><?php endif; ?></div>
+<?php if($task['status']==='correction' && trim((string)($task['last_review_comment']??''))!==''): ?><blockquote class="day-flow-comment"><small>Последнее замечание проверяющего · <?= e(format_date(substr($task['last_review_comment_at'],0,10))) ?></small><p><?= nl2br(e($task['last_review_comment'])) ?></p></blockquote><?php endif; ?>
+<?php if($flow['can_accept']): ?><details class="day-detail"><summary>Не могу принять</summary><form class="day-reject-form" method="post" action="<?= url('/tasks/'.$taskId.'/assignment-response') ?>"><?= csrf_field() ?><input type="hidden" name="decision" value="rejected"><input type="hidden" name="back" value="/my-day"><label>Причина<input name="comment" required maxlength="2000" placeholder="Что мешает принять задачу"></label><button class="btn" type="submit">Вернуть с причиной</button></form></details><?php endif; ?>
+<?php if($flow['can_time'] || !empty($flow['can_review_time'])): ?><details class="day-detail"><summary>Записать время<?= !empty($flow['can_review_time'])?' проверки':'' ?> · план <?= e($task['planned_hours']??0) ?> ч · факт <?= e($task['actual_hours']??0) ?> ч</summary><form class="day-time-form" method="post" action="<?= url('/time/task') ?>"><?= csrf_field() ?><input type="hidden" name="task_id" value="<?= $taskId ?>"><input type="hidden" name="work_date" value="<?= e($model['today']) ?>"><input type="hidden" name="phase" value="<?= !empty($flow['can_review_time'])?'review':'execution' ?>"><input type="hidden" name="back" value="/my-day?day=work"><label>Часы за сегодня<input name="hours" type="number" min="0.25" max="24" step="0.25" required></label><button class="btn primary" type="submit">Записать</button><button class="btn" type="submit" name="quick" value="0.5" formnovalidate>+0,5 ч</button><button class="btn" type="submit" name="quick" value="1" formnovalidate>+1 ч</button></form></details><?php endif; ?>
+<?php if($canSubmit): ?><details class="day-detail"><summary>Результат готов — передать на проверку</summary><form method="post" class="day-submit-result" action="<?= url('/tasks/'.$taskId.'/close-request') ?>"><?= csrf_field() ?><p>Работа перейдёт на проверку. Решение о результате примет <?= e($task['reviewer_name']) ?>.</p><button class="btn primary" type="submit">Передать результат</button></form></details><?php endif; ?>
+</article>

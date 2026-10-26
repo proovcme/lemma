@@ -1,36 +1,37 @@
 <?php
-use App\Services\TimeService;
-$hours = static fn ($minutes): string => TimeService::minutesToHours((int) $minutes) ?: '0';
-$formatNumber = static function ($value, $precision = 1): string { $result = number_format((float) $value, $precision, '.', ' '); return str_contains($result, '.') ? rtrim(rtrim($result, '0'), '.') : $result; };
-$managerMatrixActions = array_values(array_filter($performanceReviewActions['manager_ready'] ?? [], static fn ($row) => ($row['manager_state'] ?? '') === 'ready'));
-$managerMeetingActions = array_values(array_filter($performanceReviewActions['manager_ready'] ?? [], static fn ($row) => ($row['manager_state'] ?? '') === 'meeting_ready'));
-$absenceLabels = ['vacation', 'sick_leave', 'business_trip', 'learning', 'day_off'];
-$tab = in_array($_GET['day'] ?? '', ['actions', 'work', 'due'], true) ? $_GET['day'] : 'actions';
-$actionRows = [];
-foreach ($model['waiting'] as $row) $actionRows[(int) $row['id']] = $row + ['day_action' => 'waiting'];
-foreach ($model['review'] as $row) $actionRows[(int) $row['id']] = $row + ['day_action' => 'review'];
-usort($actionRows, static fn ($a, $b) => strcmp($a['date_end'] ?: '9999', $b['date_end'] ?: '9999'));
-$rows = match ($tab) { 'work' => $model['inWork'], 'due' => $model['due'], default => $actionRows };
-$rows = array_values($rows);
-usort($rows, static fn ($a, $b) => strcmp($a['date_end'] ?: '9999', $b['date_end'] ?: '9999'));
-$dayGroup = static fn ($task) => !$task['date_end'] ? 'Без срока' : ($task['date_end'] < $model['today'] ? 'Просрочено' : ($task['date_end'] === $model['today'] ? 'Сегодня' : 'Далее'));
-$lastDayGroup = null;
+use App\Services\{TimeService,WorkdayFlowService};
+$hours = static fn ($minutes): string => TimeService::minutesToHours((int)$minutes) ?: '0';
+$formatNumber = static function ($value,$precision=1): string { $result=number_format((float)$value,$precision,'.',' ');return str_contains($result,'.')?rtrim(rtrim($result,'0'),'.'):$result; };
+$managerMatrixActions=array_values(array_filter($performanceReviewActions['manager_ready']??[],static fn($row)=>($row['manager_state']??'')==='ready'));
+$managerMeetingActions=array_values(array_filter($performanceReviewActions['manager_ready']??[],static fn($row)=>($row['manager_state']??'')==='meeting_ready'));
+$absenceLabels=['vacation','sick_leave','business_trip','learning','day_off'];
+$tab=in_array($_GET['day']??'',['actions','work','awaiting','due'],true)?$_GET['day']:'actions';
+$queue=WorkdayFlowService::queue($model['actions'],$inputInbox??[]);
+$items=match($tab){'work'=>WorkdayFlowService::queue($model['inWork'],[]),'awaiting'=>WorkdayFlowService::queue($model['awaiting'],[]),'due'=>WorkdayFlowService::queue($model['due'],[]),default=>$queue};
+$counts=['actions'=>count($queue),'work'=>count($model['inWork']),'awaiting'=>count($model['awaiting']),'due'=>count($model['due'])];
+$group=null;
 ?>
-<div class="page-heading"><div><h1>Мой день</h1><p>Решения, текущая работа и ближайшие сроки.</p></div><a class="btn" href="<?= url('/tasks') ?>">Все мои задачи →</a></div>
-<div class="day-facts"><a href="<?= url('/my-day?day=actions') ?>"><small>Принять</small><strong><?= count($model['waiting']) ?></strong></a><a href="<?= url('/my-day?day=actions') ?>"><small>Проверить</small><strong><?= count($model['review']) ?></strong></a><a href="<?= url('/my-day?day=work') ?>"><small>В работе</small><strong><?= count($model['inWork']) ?></strong></a><a href="<?= url('/time') ?>"><small>Записано сегодня</small><strong><?= e($hours($model['timeToday']['totalMinutes'])) ?> ч</strong></a></div>
-<nav class="tabs" aria-label="Работа на сегодня"><?php foreach (['actions' => 'Нужны мои действия', 'work' => 'В работе', 'due' => 'Сроки'] as $key => $label): ?><a class="<?= $tab === $key ? 'active' : '' ?>"<?= $tab === $key ? ' aria-current="page"' : '' ?> href="<?= url('/my-day?' . http_build_query(array_filter(['day' => $key, 'department' => $filters['department'] ?? '', 'date_from' => $filters['date_from'] ?? '', 'date_to' => $filters['date_to'] ?? '']))) ?>"><?= e($label) ?> <span><?= $key === 'actions' ? count($actionRows) + count($inputInbox ?? []) : count($key === 'work' ? $model['inWork'] : $model['due']) ?></span></a><?php endforeach; ?></nav>
-<?php if (!app_is_demo_mode()): require BASE_PATH . '/app/Views/workday/_workspace_reviews.php'; endif; ?>
-<?php if($tab==='actions') require BASE_PATH.'/app/Views/inputs/_inbox.php'; ?>
+<div class="page-heading"><div><h1>Мой день</h1><p>Следующий шаг по вашей работе. Список обновляется после каждого решения.</p></div><a class="btn" href="<?= url('/tasks') ?>">Все мои задачи →</a></div>
+<div class="day-facts">
+<a href="<?= url('/my-day') ?>"><small>Мои действия</small><strong><?= $counts['actions'] ?></strong></a>
+<a href="<?= url('/my-day?day=awaiting') ?>"><small>Жду решения</small><strong><?= $counts['awaiting'] ?></strong></a>
+<a href="<?= url('/my-day?day=work') ?>"><small>В работе</small><strong><?= $counts['work'] ?></strong></a>
+<a href="<?= url('/time') ?>"><small>Записано сегодня</small><strong><?= e($hours($model['timeToday']['totalMinutes'])) ?> ч</strong></a>
+</div>
+<nav class="tabs day-flow-tabs" aria-label="Работа на сегодня">
+<?php foreach(['actions'=>'Сделать','work'=>'В работе','awaiting'=>'Жду решения','due'=>'Сроки'] as $key=>$label): ?>
+<a class="<?= $tab===$key?'active':'' ?>"<?= $tab===$key?' aria-current="page"':'' ?> href="<?= url('/my-day?'.http_build_query(array_filter(['day'=>$key,'department'=>$filters['department']??'','date_from'=>$filters['date_from']??'','date_to'=>$filters['date_to']??'']))) ?>"><?= e($label) ?> <span><?= $counts[$key] ?></span></a>
+<?php endforeach; ?></nav>
+<?php if(!app_is_demo_mode()) require BASE_PATH.'/app/Views/workday/_workspace_reviews.php'; ?>
 <div class="day-list">
-<?php if (!$rows && !($tab === 'actions' && !empty($inputInbox))): ?><div class="empty"><h2><?= $tab === 'actions' ? 'Личных действий сейчас нет' : ($tab === 'work' ? 'Пока нет задач в работе' : 'Ближайших сроков и просрочек нет') ?></h2><p><?= $tab === 'actions' ? 'Когда вам назначат задачу или проверку, она появится здесь. Текущая работа доступна на соседней вкладке.' : 'Откройте все задачи или вернитесь к личным действиям.' ?></p></div><?php endif; ?>
-<?php foreach ($rows as $task): $taskId = (int) $task['id']; $kind = $task['day_action'] ?? $tab; $isResultReview = !empty($task['close_requested_at']) && in_array($task['status'], ['review', 'pending_close'], true); $reviewLabel = $isResultReview ? 'Проверить результат' : (($task['task_type'] ?? '') === 'issuance' ? 'Согласовать выдачу' : 'Согласовать задачу'); ?>
-<?php $currentDayGroup = $dayGroup($task); if ($currentDayGroup !== $lastDayGroup): $lastDayGroup = $currentDayGroup; ?><h2 class="day-group-title"><?= e($currentDayGroup) ?></h2><?php endif; ?>
-<article class="day-entry<?= $currentDayGroup === 'Просрочено' ? ' is-overdue' : '' ?>"><div class="day-entry-main"><div><span class="day-action-label"><?= match ($kind) { 'waiting' => 'Принять задачу', 'review' => $reviewLabel, 'work' => 'Продолжить работу', default => 'Проверить срок' } ?></span><h2><a href="<?= url('/tasks/' . $taskId) ?>"><?= e($task['title']) ?></a></h2><p class="muted"><?= e($task['project_code'] . ' · ' . $task['project_title']) ?></p><small>#<?= $taskId ?> · <?= e($task['date_end'] ? 'Срок: ' . format_date($task['date_end']) : 'Срок не задан') ?><?= $task['date_end'] && $task['date_end'] < $model['today'] ? ' · Просрочено' : '' ?><?= !empty($task['substitute_for_name']) ? ' · Замещение: ' . e($task['substitute_for_name']) : '' ?></small></div>
-<?php if ($kind === 'waiting'): ?><form method="post" action="<?= url('/tasks/' . $taskId . '/assignment-response') ?>"><?= csrf_field() ?><input type="hidden" name="decision" value="accepted"><input type="hidden" name="back" value="/my-day"><button class="btn primary" type="submit">Принять в работу</button></form><?php else: ?><a class="btn <?= $kind === 'review' ? 'primary' : '' ?>" href="<?= url('/tasks/' . $taskId) ?>"><?= $kind === 'review' ? ($isResultReview ? 'Открыть проверку' : 'Открыть согласование') : 'Открыть задачу' ?></a><?php endif; ?></div>
-<?php if ($kind === 'waiting'): ?><details class="day-detail"><summary>Не могу принять</summary><form class="day-reject-form" method="post" action="<?= url('/tasks/' . $taskId . '/assignment-response') ?>"><?= csrf_field() ?><input type="hidden" name="decision" value="rejected"><input type="hidden" name="back" value="/my-day"><label>Причина<input name="comment" required maxlength="2000" placeholder="Что мешает принять задачу"></label><button class="btn" type="submit">Вернуть с причиной</button></form></details><?php endif; ?>
-<?php if (in_array($kind, ['work', 'review'], true)): ?><details class="day-detail"><summary>Записать время<?= $kind === 'work' ? ' · план ' . e($task['planned_hours'] ?? 0) . ' ч · факт ' . e($task['actual_hours'] ?? 0) . ' ч' : ' проверки' ?></summary><form class="day-time-form" method="post" action="<?= url('/time/task') ?>"><?= csrf_field() ?><input type="hidden" name="task_id" value="<?= $taskId ?>"><input type="hidden" name="work_date" value="<?= e($model['today']) ?>"><input type="hidden" name="phase" value="<?= $kind === 'review' ? 'review' : 'execution' ?>"><input type="hidden" name="back" value="<?= $kind === 'work' ? '/my-day?day=work' : '/my-day' ?>"><label>Часы за сегодня<input name="hours" type="number" min="0.25" max="24" step="0.25" required></label><button class="btn primary" type="submit">Записать</button><button class="btn" type="submit" name="quick" value="0.5" formnovalidate>+0,5 ч</button><button class="btn" type="submit" name="quick" value="1" formnovalidate>+1 ч</button></form></details><?php endif; ?>
-</article><?php endforeach; ?>
-</div><p class="muted day-limit-note">В каждом списке показано до 24 задач. Полный перечень — в «Моих задачах».</p>
+<?php if(!$items): ?><div class="empty"><h2><?= match($tab){'actions'=>'Сейчас от вас не ждут решений','work'=>'Пока нет задач в работе','awaiting'=>'Ожиданий решения нет',default=>'Ближайших сроков и просрочек нет'} ?></h2><p><?= $tab==='actions'?'Можно продолжить текущую работу. Новые поручения, возвраты и ответы появятся здесь автоматически.':'Когда состояние работы изменится, список обновится автоматически.' ?></p><?php if($tab==='actions' && $counts['work']): ?><a class="btn primary" href="<?= url('/my-day?day=work') ?>">Продолжить работу · <?= $counts['work'] ?></a><?php endif; ?></div><?php endif; ?>
+<?php foreach($items as $entry):
+    $currentGroup=!$entry['due']?'Без срока':($entry['due']<$model['today']?'Просрочено':($entry['due']===$model['today']?'Сегодня':'Далее'));
+    if($group!==$currentGroup):$group=$currentGroup; ?><h2 class="day-group-title"><?= e($group) ?></h2><?php endif;
+    if($entry['kind']==='input') { $r=$entry['item']; require BASE_PATH.'/app/Views/inputs/_day_entry.php'; }
+    else { $task=$entry['item']; require BASE_PATH.'/app/Views/workday/_task_entry.php'; }
+endforeach; ?>
+</div><p class="muted day-limit-note">Показано до 24 задач в каждом списке<?= $tab==='actions'?' и до 24 запросов':'' ?>. Полный перечень — в задачах.</p>
 <?php if ($dayNotifications): ?><details class="workspace-secondary"><summary>Непрочитанные уведомления · последние <?= count($dayNotifications) ?></summary><?php foreach ($dayNotifications as $notification): ?><div class="day-notification"><p><?= e($notification['body']) ?></p><?php if ($notification['target_url']): ?><a class="btn text" href="<?= url($notification['target_url']) ?>">Открыть →</a><?php endif; ?></div><?php endforeach; ?><a class="btn" href="<?= url('/notifications') ?>">Все уведомления</a></details><?php endif; ?>
 <div class="workspace-secondary">
 <?php require BASE_PATH . '/app/Views/workday/_workspace_secondary.php'; ?>

@@ -37,6 +37,8 @@ final class WorkdayService
             'inWork' => $tasks['inWork'],
             'review' => $tasks['review'],
             'due' => $tasks['due'],
+            'actions' => $tasks['actions'],
+            'awaiting' => $tasks['awaiting'],
             'timeToday' => $timeToday,
             'teamLoad' => $team,
             'departments' => $this->departmentsForUser($user),
@@ -74,7 +76,7 @@ final class WorkdayService
     }
 
     /**
-     * @return array{waiting: list<array<string, mixed>>, inWork: list<array<string, mixed>>, review: list<array<string, mixed>>, due: list<array<string, mixed>>}
+     * @return array<string, list<array<string, mixed>>>
      */
     private function tasksForUser(array $user, string $today): array
     {
@@ -99,11 +101,15 @@ final class WorkdayService
                    absent_user.name AS substitute_for_name,
                    p.code AS project_code, p.title AS project_title,
                    assignee.name AS assignee_name,
-                   reviewer.name AS reviewer_name
+                   reviewer.name AS reviewer_name, author.name AS author_name, gip.name AS gip_name,
+                   (SELECT ta.comment FROM task_approvals ta WHERE ta.task_id=t.id AND ta.decision="rejected" ORDER BY ta.id DESC LIMIT 1) AS last_review_comment,
+                   (SELECT ta.created_at FROM task_approvals ta WHERE ta.task_id=t.id AND ta.decision="rejected" ORDER BY ta.id DESC LIMIT 1) AS last_review_comment_at
             FROM tasks t
             INNER JOIN projects p ON p.id = t.project_id
             LEFT JOIN users assignee ON assignee.id = t.assignee_id
             LEFT JOIN users reviewer ON reviewer.id = t.reviewer_id
+            LEFT JOIN users author ON author.id = t.author_id
+            LEFT JOIN users gip ON gip.id = p.gip_user_id
             LEFT JOIN employee_vacations active_assignee_vacation
               ON active_assignee_vacation.user_id = t.assignee_id
              AND active_assignee_vacation.substitute_user_id = :substitute_assignee_user
@@ -143,8 +149,9 @@ final class WorkdayService
             'substitute_reviewer_today' => $today,
         ] + $actionParams);
 
-        $groups = ['waiting' => [], 'inWork' => [], 'review' => [], 'due' => []];
+        $groups = ['waiting'=>[], 'inWork'=>[], 'review'=>[], 'due'=>[], 'actions'=>[], 'awaiting'=>[]];
         foreach ($stmt->fetchAll() as $task) {
+            if (($task['task_type'] ?? '') === TaskWorkflowService::TASK_TYPE_REVIEW) continue;
             $status = (string) ($task['status'] ?? '');
             $isAssignee = (int) ($task['assignee_id'] ?? 0) === $userId;
             $isSubstituteAssignee = (int) ($task['substitute_for_assignee'] ?? 0) > 0;
@@ -155,17 +162,16 @@ final class WorkdayService
             $isDue = $deadline !== '' && $deadline <= $week;
             $isAction = in_array((int) $task['id'], $actionIds, true);
 
-            if ($handlesAssignee && in_array($status, ['new', TaskWorkflowService::STATUS_CORRECTION], true) && (string) ($task['task_type'] ?? 'work') !== TaskWorkflowService::TASK_TYPE_REVIEW) {
-                $groups['waiting'][] = $task;
-            }
-            if ($handlesAssignee && in_array($status, ['in_progress', 'overdue', TaskWorkflowService::STATUS_CORRECTION], true)) {
-                $groups['inWork'][] = $task;
-            }
-            if ($isAction) {
-                $groups['review'][] = $task;
-            }
-            if (($handlesAssignee || $isAction) && ($isDue || $status === 'overdue')) {
-                $groups['due'][] = $task;
+            // A personal action outranks an assignee's waiting state; broad oversight never does.
+            $flow = WorkdayFlowService::describe($task, $isAction);
+            $task['flow'] = $flow;
+            if ($isAction || $handlesAssignee) {
+                if ($flow['bucket'] === 'actions') $groups['actions'][] = $task;
+                if ($flow['bucket'] === 'awaiting') $groups['awaiting'][] = $task;
+                if ($flow['can_accept']) $groups['waiting'][] = $task;
+                if ($flow['bucket'] === 'work' || ($flow['can_time'] && $status === 'correction')) $groups['inWork'][] = $task;
+                if ($isAction) $groups['review'][] = $task;
+                if ($isDue || $status === 'overdue') $groups['due'][] = $task;
             }
         }
 
